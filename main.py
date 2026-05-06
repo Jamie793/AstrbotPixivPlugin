@@ -390,6 +390,8 @@ class PixivcCrawlerPlugin(Star):
         return {
             "refresh_token": str(self.config.get("refresh_token") or "").strip(),
             "proxy": proxy,
+            "use_image_proxy_without_proxy": bool(self.config.get("use_image_proxy_without_proxy", True)),
+            "image_proxy_host": str(self.config.get("image_proxy_host", "https://i.pixiv.re") or "https://i.pixiv.re").rstrip("/"),
             "default_count": max(1, int(self.config.get("default_count", 20) or 20)),
             "max_count": max(1, int(self.config.get("max_count", 100) or 100)),
             "image_quality": quality,
@@ -739,7 +741,21 @@ class PixivcCrawlerPlugin(Star):
         items = [x for x in extract_items(resp, "illust") if self.pass_filter(x, "illust")]
         return unique_items(items)[:count]
 
+    def convert_image_proxy_url(self, url: str, proxy=None) -> str:
+        c = self.cfg()
+        if proxy or not c["use_image_proxy_without_proxy"]:
+            return url
+        host = c["image_proxy_host"].rstrip("/")
+        if not host:
+            return url
+        # i.pixiv.re 用法：把 https://i.pximg.net/... 替换为 https://i.pixiv.re/...
+        for src in ("https://i.pximg.net", "http://i.pximg.net"):
+            if str(url).startswith(src):
+                return host + str(url)[len(src):]
+        return url
+
     async def download_url(self, session, url, path, proxy=None, timeout=60):
+        url = self.convert_image_proxy_url(url, proxy)
         headers = {"Referer": "https://www.pixiv.net/", "User-Agent": "Mozilla/5.0"}
         async with session.get(url, headers=headers, proxy=proxy or None, timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
             if resp.status != 200:
@@ -1445,6 +1461,8 @@ class PixivcCrawlerPlugin(Star):
             "Pixivc 状态：\n"
             f"refresh_token：{'已设置' if c['refresh_token'] else '未设置'}\n"
             f"proxy：{c['proxy'] or '未设置'}\n"
+            f"use_image_proxy_without_proxy：{c['use_image_proxy_without_proxy']}\n"
+            f"image_proxy_host：{c['image_proxy_host']}\n"
             f"default_count：{c['default_count']}\n"
             f"max_count：{c['max_count']}\n"
             f"search_start_page：{c['search_start_page']}\n"

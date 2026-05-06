@@ -13,6 +13,18 @@
     "hint": "Pixiv 请求代理地址，例如 http://127.0.0.1:7890。留空时仅尝试使用环境变量代理，不再复用 pixiv_reborn 配置。",
     "default": ""
   },
+  "use_image_proxy_without_proxy": {
+    "description": "无代理时使用图片反代",
+    "type": "bool",
+    "default": true,
+    "hint": "当 proxy 为空时，下载 Pixiv 图片自动使用图片反代地址。只影响图片/封面下载，不影响 Pixiv API 请求。"
+  },
+  "image_proxy_host": {
+    "description": "图片反代地址",
+    "type": "string",
+    "default": "https://i.pixiv.re",
+    "hint": "无代理下载图片时使用的反代地址。默认 https://i.pixiv.re，会把 https://i.pximg.net/... 转为 https://i.pixiv.re/...。"
+  },
   "default_count": {
     "description": "默认爬取数量",
     "type": "int",

@@ -45,6 +45,8 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 可选配置：
 
 - proxy：Pixiv API 代理地址，例如 http://127.0.0.1:7890
+- use_image_proxy_without_proxy：无代理时使用图片反代下载图片
+- image_proxy_host：图片反代地址，默认 https://i.pixiv.re
 - image_quality：合并转发预览图片质量，ZIP 固定 original
 - max_count：单次最大返回数量
 - allow_r18_group：群聊是否允许 R18
@@ -271,7 +273,7 @@ data/downloads
 
 ## 注意事项
 
-1. 本插件依赖 Pixiv App API，网络环境需要能访问 Pixiv。
+1. 本插件依赖 Pixiv App API，网络环境需要能访问 Pixiv。无代理时可通过图片反代下载图片，但 Pixiv API 本身仍需要可访问。
 2. refresh_token 失效后需要重新获取。
 3. original 原图可能体积较大，请合理设置 max_count 和 max_zip_mb。
 4. 群聊开启 R18 请谨慎。
