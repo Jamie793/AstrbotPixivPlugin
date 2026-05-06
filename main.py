@@ -1079,7 +1079,7 @@ class PixivcCrawlerPlugin(Star):
         return build_pixivc_help_text(self.admin_mark)
 
 
-    @filter.command("pixivc_get_token", alias={"获取P站Token", "pixiv_get_token"})
+    @filter.command("pixivc_get_token", alias={"获取P站Token"})
     async def pixivc_get_token(self, event: AstrMessageEvent):
         yield event.plain_result("我正在生成 Pixiv 官方 OAuth 登录链接。")
         try:
