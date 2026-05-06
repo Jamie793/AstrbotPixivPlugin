@@ -328,6 +328,7 @@ class PixivcCrawlerPlugin(Star):
         self._task_lock = asyncio.Lock()
         self._current_allow_r18 = None
         self._current_start_page_override = None
+        self._last_debug = ""
         self._clean_task = None
 
     async def initialize(self):
@@ -656,6 +657,41 @@ class PixivcCrawlerPlugin(Star):
             return False
         return True
 
+    def filter_reason(self, item, kind="illust"):
+        c = self.cfg()
+        allow_r18 = self._current_allow_r18 if self._current_allow_r18 is not None else False
+        if not allow_r18 and is_r18(item):
+            return "r18"
+        if not c["allow_ai"] and is_ai(item):
+            return "ai"
+        if c["min_bookmarks"] >= 0 and stat_value(item, "total_bookmarks") < c["min_bookmarks"]:
+            return "bookmarks"
+        if c["min_views"] >= 0 and stat_value(item, "total_view", "total_views") < c["min_views"]:
+            return "views"
+        if c["min_likes"] >= 0 and stat_value(item, "total_like", "total_likes", "like_count", "likeCount") < c["min_likes"]:
+            return "likes"
+        return "pass"
+
+    def debug_resp_keys(self, resp):
+        if isinstance(resp, dict):
+            return ",".join(list(resp.keys())[:20])
+        try:
+            if hasattr(resp, "keys"):
+                return ",".join(list(resp.keys())[:20])
+        except Exception:
+            pass
+        return type(resp).__name__
+
+    def set_debug_info(self, title, resp=None, raw_count=0, kept_count=0, reasons=None):
+        reasons = reasons or {}
+        self._last_debug = (
+            f"调试信息：{title}\n"
+            f"API字段：{self.debug_resp_keys(resp)}\n"
+            f"提取数量：{raw_count}\n"
+            f"过滤后数量：{kept_count}\n"
+            f"过滤原因：r18={reasons.get('r18',0)}，ai={reasons.get('ai',0)}，收藏={reasons.get('bookmarks',0)}，浏览={reasons.get('views',0)}，点赞={reasons.get('likes',0)}"
+        )
+
     def and_match(self, item, terms, mode="key"):
         if not terms:
             return True
@@ -684,8 +720,17 @@ class PixivcCrawlerPlugin(Star):
                     resp = await self.api_call("search_novel", query, search_target=target, sort="date_desc")
             current_page = page + 1
             if current_page >= start_page:
-                batch = [x for x in extract_items(resp, kind) if self.pass_filter(x, kind)]
+                raw_batch = extract_items(resp, kind)
+                reasons = {"r18": 0, "ai": 0, "bookmarks": 0, "views": 0, "likes": 0}
+                batch = []
+                for x in raw_batch:
+                    reason = self.filter_reason(x, kind)
+                    if reason == "pass":
+                        batch.append(x)
+                    elif reason in reasons:
+                        reasons[reason] += 1
                 items = unique_items(items + batch)
+                self.set_debug_info(f"{kind} 搜索分页", resp, len(raw_batch), len(items), reasons)
                 if len(items) >= count:
                     break
             try:
@@ -1058,7 +1103,7 @@ class PixivcCrawlerPlugin(Star):
                             logger.info("Pixivc 已静默刷新 access token，正在自动重试本次图片命令。")
                         items = await collector()
                         if not items:
-                            yield event.plain_result("没有找到符合条件的作品，可能是过滤条件过严或关键词无结果。")
+                            yield event.plain_result("没有找到符合条件的作品，可能是过滤条件过严或关键词无结果。" + ("\n" + self._last_debug if self._last_debug else ""))
                             return
                         self.save_last_items(event, items, label, "illust")
                         base, zip_path, saved = await self.prepare_illust_files(items, "pixivc_preview_" + label)
@@ -1103,7 +1148,7 @@ class PixivcCrawlerPlugin(Star):
                             logger.info("Pixivc 已静默刷新 access token，正在自动重试本次小说命令。")
                         items = await collector()
                         if not items:
-                            yield event.plain_result("没有找到符合条件的小说，可能是过滤条件过严或关键词无结果。")
+                            yield event.plain_result("没有找到符合条件的小说，可能是过滤条件过严或关键词无结果。" + ("\n" + self._last_debug if self._last_debug else ""))
                             return
                         self.save_last_items(event, items, label, "novel")
                         infos = await self.build_novel_preview_infos(items)
@@ -1241,8 +1286,17 @@ class PixivcCrawlerPlugin(Star):
                 resp = await self.api_call(method_name, *args, **kwargs)
             current_page = page + 1
             if current_page >= start_page:
-                batch = [x for x in extract_items(resp, "novel") if self.pass_filter(x, "novel")]
+                raw_batch = extract_items(resp, "novel")
+                reasons = {"r18": 0, "ai": 0, "bookmarks": 0, "views": 0, "likes": 0}
+                batch = []
+                for x in raw_batch:
+                    reason = self.filter_reason(x, "novel")
+                    if reason == "pass":
+                        batch.append(x)
+                    elif reason in reasons:
+                        reasons[reason] += 1
                 items = unique_items(items + batch)
+                self.set_debug_info(f"{method_name} 分页", resp, len(raw_batch), len(items), reasons)
                 if len(items) >= count:
                     break
             try:
@@ -1512,6 +1566,10 @@ class PixivcCrawlerPlugin(Star):
             return
         users = await self.collect_paginated_users("search_user", count, q)
         yield event.plain_result(self.format_users(users, count))
+
+    @filter.command("pixivc_debug_last")
+    async def pixivc_debug_last(self, event: AstrMessageEvent):
+        yield event.plain_result(self._last_debug or "暂无调试信息。")
 
     @filter.command("pixivc_status")
     async def pixivc_status(self, event: AstrMessageEvent):

@@ -208,6 +208,7 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 - /pixivc_new [数量]：获取新作
 - /pixivc_recommended_users [数量]：获取推荐作者列表
 - /pixivc_user_search 关键词 [数量]：搜索用户
+- /pixivc_debug_last：查看最近一次提取和过滤调试信息
 - /pixivc_novel_recommended [数量]：获取推荐小说，支持 page 参数
 - /pixivc_get_token：生成 Pixiv 官方 OAuth 登录链接，获取 token
 
