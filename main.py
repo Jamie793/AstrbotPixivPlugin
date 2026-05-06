@@ -889,14 +889,12 @@ class PixivcCrawlerPlugin(Star):
         total = max(1, len(items))
         used_preview_chars = 0
         total_budget = c["novel_preview_total_chars"]
+        skip_msg = "\n\n正文预览：为避免内容过长，后续作品不展示正文预览。"
         for item in items:
             info = build_novel_info(item, c["include_tags"], c["max_tags_display"], c["include_caption"])
             nid = item_id(item)
-            # 如果整体预览预算用完，后续只保留小说信息，不再追加正文预览。
             if used_preview_chars >= total_budget:
-                info += "
-
-正文预览：为避免内容过长，后续作品不展示正文预览。"
+                info += skip_msg
                 infos.append(info)
                 continue
             text = ""
@@ -916,20 +914,12 @@ class PixivcCrawlerPlugin(Star):
                 if preview_len > 0:
                     preview = text[:preview_len]
                     used_preview_chars += len(preview)
-                    more = "
-……" if len(text) > preview_len else ""
-                    info += f"
-
-正文预览：
-{preview}{more}"
+                    more = "\n……" if len(text) > preview_len else ""
+                    info += f"\n\n正文预览：\n{preview}{more}"
                 else:
-                    info += "
-
-正文预览：为避免内容过长，后续作品不展示正文预览。"
+                    info += skip_msg
             else:
-                info += "
-
-正文预览：获取失败或为空"
+                info += "\n\n正文预览：获取失败或为空"
             infos.append(info)
         return infos
 
