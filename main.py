@@ -406,6 +406,7 @@ class PixivcCrawlerPlugin(Star):
             "admin_following": bool((self.config.get("admin_permissions") or {}).get("admin_following", self.config.get("admin_following", True))),
             "admin_follow_latest": bool((self.config.get("admin_permissions") or {}).get("admin_follow_latest", self.config.get("admin_follow_latest", True))),
             "admin_recommended_users": bool((self.config.get("admin_permissions") or {}).get("admin_recommended_users", self.config.get("admin_recommended_users", True))),
+            "admin_novel_recommended": bool((self.config.get("admin_permissions") or {}).get("admin_novel_recommended", self.config.get("admin_novel_recommended", True))),
             "admin_clean": bool((self.config.get("admin_permissions") or {}).get("admin_clean", self.config.get("admin_clean", True))),
             "admin_r18_manage": bool((self.config.get("admin_permissions") or {}).get("admin_r18_manage", self.config.get("admin_r18_manage", True))),
             "min_bookmarks": max(-1, int(self.config.get("min_bookmarks", -1) if self.config.get("min_bookmarks", -1) is not None else -1)),
@@ -1194,6 +1195,32 @@ class PixivcCrawlerPlugin(Star):
                 break
         return items[:count]
 
+    async def collect_paginated_novel(self, method_name: str, count: int, *args, **kwargs):
+        api = await self.api()
+        c = self.cfg()
+        items = []
+        next_qs = None
+        max_pages = 1000 if c["search_pages"] == -1 else max(1, c["search_pages"])
+        start_page = self.effective_start_page()
+        for page in range(max_pages + start_page - 1):
+            if next_qs:
+                resp = await self.api_call(method_name, **next_qs)
+            else:
+                resp = await self.api_call(method_name, *args, **kwargs)
+            current_page = page + 1
+            if current_page >= start_page:
+                batch = [x for x in extract_items(resp, "novel") if self.pass_filter(x, "novel")]
+                items = unique_items(items + batch)
+                if len(items) >= count:
+                    break
+            try:
+                next_qs = api.parse_qs(getv(resp, "next_url", None))
+            except Exception:
+                next_qs = None
+            if not next_qs:
+                break
+        return items[:count]
+
     async def collect_paginated_users(self, method_name: str, count: int, *args, **kwargs):
         api = await self.api()
         c = self.cfg()
@@ -1478,6 +1505,7 @@ class PixivcCrawlerPlugin(Star):
             f"admin_discovery：{c['admin_discovery']}\n"
             f"admin_bookmark：{c['admin_bookmark']}\n"
             f"admin_follow：{c['admin_follow']}\n"
+            f"admin_novel_recommended：{c['admin_novel_recommended']}\n"
             f"任务中：{self._task_lock.locked()}"
         )
 
@@ -1717,6 +1745,16 @@ class PixivcCrawlerPlugin(Star):
             yield event.plain_result("用法：/pixivc_novel_tag_or 标签1,标签2 [数量]")
             return
         async for r in self.run_novel_job(event, f"tag_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "or")):
+            yield r
+
+    @filter.command("pixivc_novel_recommended", alias={"pixivc_novel_discovery"})
+    async def pixivc_novel_recommended(self, event: AstrMessageEvent, args: str = ""):
+        if not self.require_admin_feature(event, "admin_novel_recommended"):
+            yield event.plain_result(self.admin_denied_text())
+            return
+        args = full_command_args(event, "pixivc_novel_recommended", args)
+        _, count = self.parse_query_count(args)
+        async for r in self.run_novel_job(event, "recommended", lambda: self.collect_paginated_novel("novel_recommended", count)):
             yield r
 
     @filter.command("pixivc_novel_rank")

@@ -355,6 +355,12 @@
     "default": true,
     "hint": "开启后 /pixivc_recommended_users 只有 bot 管理者可用；关闭后普通用户也可查看推荐作者列表。"
   },
+  "admin_novel_recommended": {
+    "description": "推荐小说需要 Admin",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 /pixivc_novel_recommended 只有 bot 管理者可用；关闭后普通用户也可用。支持 page 参数指定起始页。"
+  },
   "admin_clean": {
     "description": "清理缓存需要 Admin",
     "type": "bool",

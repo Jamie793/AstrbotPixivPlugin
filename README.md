@@ -188,6 +188,7 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 7. /pixivc_novel_rank daily [数量]
 8. /pixivc_novel_user 123456 [数量]
 9. /pixivc_novel_id 123456789
+10. /pixivc_novel_recommended [数量]
 
 ## App API 扩展命令
 
@@ -205,6 +206,7 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 - /pixivc_new [数量]：获取新作
 - /pixivc_recommended_users [数量]：获取推荐作者列表
 - /pixivc_user_search 关键词 [数量]：搜索用户
+- /pixivc_novel_recommended [数量]：获取推荐小说，支持 page 参数
 - /pixivc_get_token：生成 Pixiv 官方 OAuth 登录链接，获取 token
 
 ## R18 说明
@@ -232,6 +234,7 @@ R18 白名单命令：
 后台配置中可以控制以下功能是否需要 bot 管理者权限：
 
 - 推荐作品
+- 推荐小说
 - 收藏/取消收藏
 - 我的收藏列表
 - 关注/取关作者
