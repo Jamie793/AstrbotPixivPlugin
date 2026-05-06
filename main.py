@@ -810,9 +810,8 @@ class PixivcCrawlerPlugin(Star):
                 raise RuntimeError(f"HTTP {resp.status}")
             path.write_bytes(await resp.read())
 
-    async def prepare_illust_files(self, items, label="pixivs", max_files=None):
+    async def prepare_illust_files(self, items, label="pixivs"):
         c = self.cfg()
-        max_files = max(1, int(max_files if max_files is not None else c["max_count"]))
         ts = time.strftime("%Y%m%d_%H%M%S")
         base = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}"
         img_dir = base / "images"
@@ -830,7 +829,7 @@ class PixivcCrawlerPlugin(Star):
                 total = len(urls)
                 out = []
                 for idx, url in enumerate(urls, 1):
-                    if len(saved) + len(out) >= max_files:
+                    if len(saved) + len(out) >= c["max_count"]:
                         break
                     ext = Path(url.split("?")[0]).suffix or ".jpg"
                     p = img_dir / f"{iid}_p{idx}_{title}{ext}"
@@ -847,7 +846,7 @@ class PixivcCrawlerPlugin(Star):
                 if isinstance(res, Exception):
                     continue
                 for row in res:
-                    if len(saved) >= max_files:
+                    if len(saved) >= c["max_count"]:
                         break
                     saved.append(row)
 
@@ -877,7 +876,7 @@ class PixivcCrawlerPlugin(Star):
         old_quality = self.config.get("image_quality")
         self.config["image_quality"] = "original"
         try:
-            return await self.prepare_illust_files(items, label, max_files=len(items))
+            return await self.prepare_illust_files(items, label)
         finally:
             if old_quality is None:
                 self.config.pop("image_quality", None)
@@ -1118,7 +1117,7 @@ class PixivcCrawlerPlugin(Star):
                             yield event.plain_result("没有找到符合条件的作品，可能是过滤条件过严或关键词无结果。" + ("\n" + self._last_debug if self._last_debug else ""))
                             return
                         self.save_last_items(event, items, label, "illust")
-                        base, zip_path, saved = await self.prepare_illust_files(items, "pixivc_preview_" + label, max_files=len(items))
+                        base, zip_path, saved = await self.prepare_illust_files(items, "pixivc_preview_" + label)
                         if not saved:
                             yield event.plain_result("找到作品但图片下载失败，请检查代理或 Pixiv 访问。")
                             return
