@@ -18,8 +18,12 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
 from pixivpy3 import AppPixivAPI, ByPassSniApi
 
-from modules.help import build_help_text as build_pixivc_help_text
-from modules.oauth import generate_login_url, exchange_token, token_parts
+try:
+    from .modules.help import build_help_text as build_pixivc_help_text
+    from .modules.oauth import generate_login_url, exchange_token, token_parts
+except ImportError:
+    from modules.help import build_help_text as build_pixivc_help_text
+    from modules.oauth import generate_login_url, exchange_token, token_parts
 
 PLUGIN_DIR = Path(__file__).parent
 DATA_DIR = PLUGIN_DIR / "data"
