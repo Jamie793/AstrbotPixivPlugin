@@ -435,6 +435,7 @@ class PixivcCrawlerPlugin(Star):
             "novel_send_mode": str(self.config.get("novel_send_mode", "zip") or "zip"),
             "novel_text_max_chars": max(500, int(self.config.get("novel_text_max_chars", 3000) or 3000)),
             "novel_preview_max_chars": max(50, int(self.config.get("novel_preview_max_chars", 500) or 500)),
+            "novel_preview_total_chars": max(200, int(self.config.get("novel_preview_total_chars", 1800) or 1800)),
             "novel_split_chars": max(500, int(self.config.get("novel_split_chars", 1500) or 1500)),
             "include_novel_cover": bool(self.config.get("include_novel_cover", True)),
             "include_novel_info": bool(self.config.get("include_novel_info", True)),
@@ -886,9 +887,18 @@ class PixivcCrawlerPlugin(Star):
         c = self.cfg()
         infos = []
         total = max(1, len(items))
+        used_preview_chars = 0
+        total_budget = c["novel_preview_total_chars"]
         for item in items:
             info = build_novel_info(item, c["include_tags"], c["max_tags_display"], c["include_caption"])
             nid = item_id(item)
+            # 如果整体预览预算用完，后续只保留小说信息，不再追加正文预览。
+            if used_preview_chars >= total_budget:
+                info += "
+
+正文预览：为避免内容过长，后续作品不展示正文预览。"
+                infos.append(info)
+                continue
             text = ""
             if nid:
                 try:
@@ -901,12 +911,25 @@ class PixivcCrawlerPlugin(Star):
                     dynamic_len = len(text)
                 else:
                     dynamic_len = max(1, len(text) // (total + 1))
-                preview_len = min(dynamic_len, c["novel_preview_max_chars"])
-                preview = text[:preview_len]
-                more = "\n……" if len(text) > preview_len else ""
-                info += f"\n\n正文预览：\n{preview}{more}"
+                remaining_budget = max(0, total_budget - used_preview_chars)
+                preview_len = min(dynamic_len, c["novel_preview_max_chars"], remaining_budget)
+                if preview_len > 0:
+                    preview = text[:preview_len]
+                    used_preview_chars += len(preview)
+                    more = "
+……" if len(text) > preview_len else ""
+                    info += f"
+
+正文预览：
+{preview}{more}"
+                else:
+                    info += "
+
+正文预览：为避免内容过长，后续作品不展示正文预览。"
             else:
-                info += "\n\n正文预览：获取失败或为空"
+                info += "
+
+正文预览：获取失败或为空"
             infos.append(info)
         return infos
 
@@ -971,8 +994,6 @@ class PixivcCrawlerPlugin(Star):
 
     async def send_forward(self, event, saved, novel_infos=None):
         c = self.cfg()
-        if c["forward_mode"] == "none" and novel_infos is not None:
-            return
         nodes = []
         if novel_infos is not None:
             for info in novel_infos:
@@ -1590,6 +1611,7 @@ class PixivcCrawlerPlugin(Star):
             f"send_mode：{c['send_mode']}\n"
             f"novel_send_mode：{c['novel_send_mode']}\n"
             f"novel_preview_max_chars：{c['novel_preview_max_chars']}\n"
+            f"novel_preview_total_chars：{c['novel_preview_total_chars']}\n"
             f"download_dir：{c['download_dir']}\n"
             f"auto_clean_enabled：{c['auto_clean_enabled']}\n"
             f"auto_clean_time：{c['auto_clean_hour']:02d}:{c['auto_clean_minute']:02d}\n"
