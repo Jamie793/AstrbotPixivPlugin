@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+.venv/
+venv/
+.DS_Store
+
+# Local runtime data, tokens and caches
+data/
+config.json
+*_config.json
+last_items.json
+last_zip.json
+r18_whitelist.json
+*.zip
+*.log
