@@ -433,6 +433,7 @@ class PixivcCrawlerPlugin(Star):
             "novel_enabled": bool(self.config.get("novel_enabled", True)),
             "novel_send_mode": str(self.config.get("novel_send_mode", "zip") or "zip"),
             "novel_text_max_chars": max(500, int(self.config.get("novel_text_max_chars", 3000) or 3000)),
+            "novel_preview_max_chars": max(100, int(self.config.get("novel_preview_max_chars", 1500) or 1500)),
             "novel_split_chars": max(500, int(self.config.get("novel_split_chars", 1500) or 1500)),
             "include_novel_cover": bool(self.config.get("include_novel_cover", True)),
             "include_novel_info": bool(self.config.get("include_novel_info", True)),
@@ -836,6 +837,30 @@ class PixivcCrawlerPlugin(Star):
             else:
                 self.config["image_quality"] = old_quality
 
+    async def build_novel_preview_infos(self, items):
+        c = self.cfg()
+        infos = []
+        for item in items:
+            info = build_novel_info(item, c["include_tags"], c["max_tags_display"], c["include_caption"])
+            nid = item_id(item)
+            text = ""
+            if nid:
+                try:
+                    text = await self.fetch_novel_text(nid)
+                except Exception as e:
+                    logger.warning(f"pixivc novel preview text failed {nid}: {e}")
+                    text = ""
+            if text:
+                half_len = max(1, len(text) // 2)
+                preview_len = min(half_len, c["novel_preview_max_chars"])
+                preview = text[:preview_len]
+                more = "\n……" if len(text) > preview_len else ""
+                info += f"\n\n正文预览：\n{preview}{more}"
+            else:
+                info += "\n\n正文预览：获取失败或为空"
+            infos.append(info)
+        return infos
+
     async def prepare_novel_files(self, items, label="pixivc_novel"):
         c = self.cfg()
         ts = time.strftime("%Y%m%d_%H%M%S")
@@ -1077,7 +1102,7 @@ class PixivcCrawlerPlugin(Star):
                             yield event.plain_result("没有找到符合条件的小说，可能是过滤条件过严或关键词无结果。")
                             return
                         self.save_last_items(event, items, label, "novel")
-                        infos = [build_novel_info(x, c["include_tags"], c["max_tags_display"], c["include_caption"]) for x in items]
+                        infos = await self.build_novel_preview_infos(items)
                         yield event.plain_result(f"小说处理完成：{len(items)} 篇，正在发送合并转发预览。需要小说 ZIP 请发送 /pixivc_get_zip")
                         async for r in self.send_forward(event, [], novel_infos=infos if c["include_novel_info"] else ["小说信息已按配置隐藏"]):
                             yield r
@@ -1502,6 +1527,7 @@ class PixivcCrawlerPlugin(Star):
             f"r18白名单人数：{len(self.load_r18_whitelist())}\n"
             f"send_mode：{c['send_mode']}\n"
             f"novel_send_mode：{c['novel_send_mode']}\n"
+            f"novel_preview_max_chars：{c['novel_preview_max_chars']}\n"
             f"download_dir：{c['download_dir']}\n"
             f"auto_clean_enabled：{c['auto_clean_enabled']}\n"
             f"auto_clean_time：{c['auto_clean_hour']:02d}:{c['auto_clean_minute']:02d}\n"

@@ -260,6 +260,14 @@
     "max": 20000,
     "hint": "小说 text 模式最多发送的正文字符数。过大可能刷屏或被平台截断。"
   },
+  "novel_preview_max_chars": {
+    "description": "小说预览最大字符数",
+    "type": "int",
+    "default": 1500,
+    "min": 100,
+    "max": 10000,
+    "hint": "小说合并转发预览中每篇正文最多显示的字符数。实际预览取正文前一半，但不会超过该值。"
+  },
   "novel_split_chars": {
     "description": "小说转发切分字符数",
     "type": "int",
