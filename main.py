@@ -36,25 +36,25 @@ OWNER_QQ = "10627452"
 HELP_TEXT = """Pixivc 爬虫帮助：
 
 图片命令：
-1. /pixivc_key xxx [数量]
-2. /pixivc_tag xxx [数量]
-3. /pixivc_key_and xxx,xxx2 [数量]
-4. /pixivc_key_or xxx,xxx2 [数量]
-5. /pixivc_tag_and xxx,xxx2 [数量]
-6. /pixivc_tag_or xxx,xxx2 [数量]
-7. /pixivc_rank daily [数量]
-8. /pixivc_user 123456 [数量]
-9. /pixivc_discovery [Admin] [数量]
+1. /pixivc_key xxx
+2. /pixivc_tag xxx
+3. /pixivc_key_and xxx,xxx2
+4. /pixivc_key_or xxx,xxx2
+5. /pixivc_tag_and xxx,xxx2
+6. /pixivc_tag_or xxx,xxx2
+7. /pixivc_rank daily
+8. /pixivc_user 123456
+9. /pixivc_discovery [Admin]
 
 小说命令：
-10. /pixivc_novel_key xxx [数量]
-11. /pixivc_novel_tag xxx [数量]
-12. /pixivc_novel_key_and xxx,xxx2 [数量]
-13. /pixivc_novel_key_or xxx,xxx2 [数量]
-14. /pixivc_novel_tag_and xxx,xxx2 [数量]
-15. /pixivc_novel_tag_or xxx,xxx2 [数量]
-16. /pixivc_novel_rank daily [数量]
-17. /pixivc_novel_user 123456 [数量]
+10. /pixivc_novel_key xxx
+11. /pixivc_novel_tag xxx
+12. /pixivc_novel_key_and xxx,xxx2
+13. /pixivc_novel_key_or xxx,xxx2
+14. /pixivc_novel_tag_and xxx,xxx2
+15. /pixivc_novel_tag_or xxx,xxx2
+16. /pixivc_novel_rank daily
+17. /pixivc_novel_user 123456
 18. /pixivc_novel_id 123456789
 
 管理命令：
@@ -69,20 +69,27 @@ HELP_TEXT = """Pixivc 爬虫帮助：
 27. /pixivc_illust_id 作品ID
 28. /pixivc_bookmark_add [Admin] 作品ID
 29. /pixivc_bookmark_del [Admin] 作品ID
-30. /pixivc_bookmarks [Admin] [数量]
+30. /pixivc_bookmarks [Admin]
 31. /pixivc_trending_tags
-32. /pixivc_related 作品ID [数量]
+32. /pixivc_related 作品ID
 33. /pixivc_follow_add [Admin] 用户ID
 34. /pixivc_follow_del [Admin] 用户ID
-35. /pixivc_following [Admin] [数量]
-36. /pixivc_follow_latest [Admin] [数量]
-37. /pixivc_new [数量]
-38. /pixivc_recommended_users [Admin] [数量]
-39. /pixivc_user_search 关键词 [数量]
+35. /pixivc_following [Admin]
+36. /pixivc_follow_latest [Admin]
+37. /pixivc_new
+38. /pixivc_recommended_users [Admin]
+39. /pixivc_user_search 关键词
 
 说明：
-- 默认数量为20；最大数量由 max_count 配置决定。
-- 可用 page 参数指定从第几页开始，例如：/pixivc_tag 原神 20 page=3，或 /pixivc_tag 原神 20 3。
+- 参数格式均可放在命令任意位置。
+- n x 表示作品数量为 x，例如 n5 表示 5 个作品；默认 n20，最大值由 max_count 配置决定。数量按作品统计，不按图片页数统计。
+- p x 表示从 Pixiv 结果第 x 页开始，例如 p3 表示从第 3 页开始；不是作品图片页。
+- m x 表示本次命令最大搜索深度为 x，例如 m30 表示最多搜索 30 页；不写则使用插件配置 search_max_depth。
+- t x 表示按作品标签筛选，例如 t女の子,初音ミク；只匹配作品 tags 里的单个标签，不匹配标题、简介、作者或关键词。多个标签按 AND 处理，作品需同时包含这些标签。标签为全字精确匹配，t空 只匹配标签“空”，不会匹配“天空”。
+- 示例：/pixivc_discovery n5 p3 m30 t女の子,初音ミク
+- 示例：/pixivc_tag 原神 n20 p3 m30
+- /pixivc_tag 本身就是标签搜索，会按作品 tags 做单标签精确过滤。
+- 作品数量不够时会继续翻页补足，直到够数、没有下一页或达到 search_max_depth。
 - 预览图片质量 medium/large/original 在插件设置 image_quality 中配置；ZIP 固定 original。
 - 图片搜索默认只发送合并转发预览，不自动发送 ZIP。
 - 如需最近一次搜索的 original ZIP，请发送 /pixivc_get_zip。
@@ -134,14 +141,14 @@ def split_terms(text: str):
 
 def parse_count_arg(text: str, default_count: int, max_count: int):
     text = (text or "").strip()
-    if not text:
-        return "", max(1, min(default_count, max_count))
-    parts = text.rsplit(maxsplit=1)
-    if len(parts) == 2 and parts[1].isdigit():
-        return parts[0].strip(), max(1, min(int(parts[1]), max_count))
-    if text.isdigit():
-        return "", max(1, min(int(text), max_count))
-    return text, max(1, min(default_count, max_count))
+    count = max(1, min(default_count, max_count))
+    # 只支持 n3 这种数量格式，可放在参数任意位置。
+    # 纯数字不再作为数量解析，避免和关键词、ID、页码混淆。
+    m = re.search(r"(?:^|\s)n(\d+)(?=\s|$)", text, flags=re.IGNORECASE)
+    if m:
+        count = max(1, min(int(m.group(1)), max_count))
+        text = (text[:m.start()] + " " + text[m.end():]).strip()
+    return text, count
 
 
 def full_command_args(event: AstrMessageEvent, command_name: str, injected: str = "") -> str:
@@ -413,8 +420,7 @@ class PixivcCrawlerPlugin(Star):
             "min_bookmarks": max(-1, int(self.config.get("min_bookmarks", -1) if self.config.get("min_bookmarks", -1) is not None else -1)),
             "min_views": max(-1, int(self.config.get("min_views", -1) if self.config.get("min_views", -1) is not None else -1)),
             "min_likes": max(-1, int(self.config.get("min_likes", -1) if self.config.get("min_likes", -1) is not None else -1)),
-            "search_pages": max(-1, int(self.config.get("search_pages", -1) if self.config.get("search_pages", -1) is not None else -1)),
-            "search_start_page": max(1, int(self.config.get("search_start_page", 1) if self.config.get("search_start_page", 1) is not None else 1)),
+            "search_max_depth": max(1, int(self.config.get("search_max_depth", 10) if self.config.get("search_max_depth", 10) is not None else 10)),
             "concurrent_downloads": max(1, min(int(self.config.get("concurrent_downloads", 3) or 3), 8)),
             "request_timeout": max(10, int(self.config.get("request_timeout", 60) or 60)),
             "download_dir": dl_path,
@@ -535,34 +541,83 @@ class PixivcCrawlerPlugin(Star):
         c = self.cfg()
         text = (raw or "").strip()
         self._current_start_page_override = None
+        self._last_count_limit_notice = ""
         page = None
+        raw_count_match = re.search(r"(?:^|\s)n(\d+)(?=\s|$)", text, flags=re.IGNORECASE)
+        raw_count = int(raw_count_match.group(1)) if raw_count_match else None
 
-        # 支持 page=3 / p=3 / start=3 / start_page=3 / 第3页 / p3
-        patterns = [
-            r"(?:^|\s)(?:page|p|start|start_page)\s*=\s*(\d+)(?=\s|$)",
-            r"(?:^|\s)第\s*(\d+)\s*页(?=\s|$)",
-            r"(?:^|\s)p(\d+)(?=\s|$)",
-        ]
-        for pat in patterns:
-            m = re.search(pat, text, flags=re.IGNORECASE)
-            if m:
-                page = max(1, int(m.group(1)))
-                text = (text[:m.start()] + " " + text[m.end():]).strip()
-                break
+        # 只支持 p3 这种页码格式，可放在参数任意位置。
+        # page=3 / p=3 / 第3页 / 末尾裸数字页数等写法不再支持，避免和 n3 数量格式混淆。
+        m = re.search(r"(?:^|\s)p(\d+)(?=\s|$)", text, flags=re.IGNORECASE)
+        if m:
+            page = max(1, int(m.group(1)))
+            text = (text[:m.start()] + " " + text[m.end():]).strip()
 
-        # 支持末尾两个数字：关键词 数量 起始页，例如 /pixivc_tag 原神 20 3
-        parts = text.rsplit(maxsplit=2)
-        if page is None and len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
-            text = (parts[0] + " " + parts[1]).strip()
-            page = max(1, int(parts[2]))
+        self._current_search_max_depth_override = None
+        m_depth = re.search(r"(?:^|\s)m(\d+)(?=\s|$)", text, flags=re.IGNORECASE)
+        if m_depth:
+            self._current_search_max_depth_override = max(1, int(m_depth.group(1)))
+            text = (text[:m_depth.start()] + " " + text[m_depth.end():]).strip()
 
         self._current_start_page_override = page
-        return parse_count_arg(text, c["default_count"], c["max_count"])
+        q, count = parse_count_arg(text, c["default_count"], c["max_count"])
+        if raw_count is not None and raw_count > c["max_count"]:
+            self._last_count_limit_notice = f"请求数量 n{raw_count} 超过 max_count={c['max_count']}，实际按 n{count} 处理。"
+        return q, count
+
+    def parse_query_count_tags(self, raw: str):
+        text = (raw or "").strip()
+        tags = []
+        # 只支持 t标签1,标签2 这种附加 tag 筛选格式，可放在参数任意位置。
+        # 裸逗号列表不再作为筛选 tag 解析，避免和关键词/标签查询本身混淆。
+        m = re.search(r"(?:^|\s)t([^\s]+)(?=\s|$)", text, flags=re.IGNORECASE)
+        if m:
+            tags = split_terms(m.group(1))
+            text = (text[:m.start()] + " " + text[m.end():]).strip()
+        q, count = self.parse_query_count(text)
+        return q, count, tags
+
+    def match_tag_filter(self, item, tag_terms) -> bool:
+        terms = [str(x).strip().lower() for x in (tag_terms or []) if str(x).strip()]
+        if not terms:
+            return True
+        tags = [str(x).strip().lower() for x in tags_text(item) if str(x).strip()]
+        for term in terms:
+            if term not in tags:
+                return False
+        return True
+
+    def merge_tag_filters(self, *groups):
+        out = []
+        for group in groups:
+            if not group:
+                continue
+            if isinstance(group, str):
+                vals = split_terms(group)
+            else:
+                vals = list(group)
+            for x in vals:
+                x = str(x).strip()
+                if x and x not in out:
+                    out.append(x)
+        return out
+
+    def effective_search_max_depth(self):
+        override = getattr(self, "_current_search_max_depth_override", None)
+        if override is not None:
+            return max(1, int(override))
+        return max(1, int(self.cfg()["search_max_depth"]))
 
     def effective_start_page(self):
         if self._current_start_page_override is not None:
             return max(1, int(self._current_start_page_override))
-        return self.cfg()["search_start_page"]
+        return 1
+
+    def set_collect_end_reason(self, reason: str):
+        self._last_collect_end_reason = reason or "未知原因"
+
+    def collect_end_reason_text(self):
+        return str(getattr(self, "_last_collect_end_reason", "未知原因") or "未知原因")
 
     def sender_id(self, event: AstrMessageEvent) -> str:
         try:
@@ -643,6 +698,40 @@ class PixivcCrawlerPlugin(Star):
         sender = self.sender_id(event)
         return bool(sender and sender in self.load_r18_whitelist())
 
+    def is_r18_query_term(self, text: str) -> bool:
+        raw = str(text or "").strip().lower()
+        if not raw:
+            return False
+        compact = re.sub(r"[\s_\-]+", "", raw)
+        return compact in {"r18", "r18g", "18禁"} or raw in {"r-18", "r-18g", "r18", "r18g", "18禁"}
+
+    def contains_r18_query(self, *values) -> bool:
+        for value in values:
+            if value is None:
+                continue
+            if isinstance(value, (list, tuple, set)):
+                if self.contains_r18_query(*list(value)):
+                    return True
+                continue
+            text = str(value or "")
+            candidates = []
+            candidates.append(text)
+            candidates.extend(split_terms(text))
+            candidates.extend([x for x in re.split(r"\s+", text) if x])
+            if any(self.is_r18_query_term(x) for x in candidates):
+                return True
+        return False
+
+    def r18_query_denied_text(self):
+        return "检测到 R18 标签/关键词，但你当前没有 R18 查看权限。请确认对应场景 R18 开关已开启，并且发送者在 R18 白名单内。"
+
+    def require_r18_query_allowed(self, event: AstrMessageEvent, *values):
+        if not self.contains_r18_query(*values):
+            return ""
+        if self.allow_r18_for_event(event):
+            return ""
+        return self.r18_query_denied_text()
+
     def pass_filter(self, item, kind="illust"):
         c = self.cfg()
         allow_r18 = self._current_allow_r18 if self._current_allow_r18 is not None else False
@@ -690,7 +779,7 @@ class PixivcCrawlerPlugin(Star):
             f"API字段：{self.debug_resp_keys(resp)}\n"
             f"提取数量：{raw_count}\n"
             f"过滤后数量：{kept_count}\n"
-            f"过滤原因：r18={reasons.get('r18',0)}，ai={reasons.get('ai',0)}，收藏={reasons.get('bookmarks',0)}，浏览={reasons.get('views',0)}，点赞={reasons.get('likes',0)}"
+            f"过滤原因：r18={reasons.get('r18',0)}，ai={reasons.get('ai',0)}，收藏={reasons.get('bookmarks',0)}，浏览={reasons.get('views',0)}，点赞={reasons.get('likes',0)}，tag={reasons.get('tag',0)}"
         )
 
     def and_match(self, item, terms, mode="key"):
@@ -702,12 +791,14 @@ class PixivcCrawlerPlugin(Star):
             hay = searchable_text(item)
         return all(t.lower() in hay for t in terms)
 
-    async def collect_page_search(self, api, query, count, kind="illust", target="partial_match_for_tags"):
+    async def collect_page_search(self, api, query, count, kind="illust", target="partial_match_for_tags", tag_terms=None):
+        self._last_requested_count = count
         c = self.cfg()
         items = []
         next_qs = None
-        max_pages = 1000 if c["search_pages"] == -1 else max(1, c["search_pages"])
+        max_pages = self.effective_search_max_depth()
         start_page = self.effective_start_page()
+        reached_limit = True
         for page in range(max_pages + start_page - 1):
             if kind == "illust":
                 if next_qs:
@@ -722,27 +813,37 @@ class PixivcCrawlerPlugin(Star):
             current_page = page + 1
             if current_page >= start_page:
                 raw_batch = extract_items(resp, kind)
-                reasons = {"r18": 0, "ai": 0, "bookmarks": 0, "views": 0, "likes": 0}
+                reasons = {"r18": 0, "ai": 0, "bookmarks": 0, "views": 0, "likes": 0, "tag": 0}
                 batch = []
                 for x in raw_batch:
                     reason = self.filter_reason(x, kind)
                     if reason == "pass":
-                        batch.append(x)
+                        if self.match_tag_filter(x, tag_terms):
+                            batch.append(x)
+                        else:
+                            reasons["tag"] += 1
                     elif reason in reasons:
                         reasons[reason] += 1
                 items = unique_items(items + batch)
                 self.set_debug_info(f"{kind} 搜索分页", resp, len(raw_batch), len(items), reasons)
                 if len(items) >= count:
+                    reached_limit = False
+                    self.set_collect_end_reason("已找到请求数量")
                     break
             try:
                 next_qs = api.parse_qs(getv(resp, "next_url", None))
             except Exception:
                 next_qs = None
             if not next_qs:
+                reached_limit = False
+                self.set_collect_end_reason("Pixiv 没有下一页")
                 break
+        if reached_limit and len(items) < count:
+            self.set_collect_end_reason(f"达到最大搜索深度 {max_pages}")
         return items[:count]
 
-    async def collect_and_or(self, terms, count, kind="illust", mode="key", logic="single"):
+    async def collect_and_or(self, terms, count, kind="illust", mode="key", logic="single", tag_terms=None):
+        self._last_requested_count = count
         api = await self.api()
         c = self.cfg()
         target = c["tag_search_target"] if mode == "tag" else c["keyword_search_target"]
@@ -751,43 +852,81 @@ class PixivcCrawlerPlugin(Star):
         if logic == "or":
             all_items = []
             for term in terms:
-                all_items += await self.collect_page_search(api, term, count, kind, target)
-            return unique_items(all_items)[:count]
+                exact_tags = self.merge_tag_filters([term], tag_terms) if mode == "tag" else tag_terms
+                all_items += await self.collect_page_search(api, term, count, kind, target, exact_tags)
+            items = unique_items(all_items)
+            # tag_or 是 OR：每一路搜索已按对应单标签精确过滤，这里只去重截断。
+            return items[:count]
         query = terms[0] if terms else ""
-        items = await self.collect_page_search(api, query, count * 2 if logic == "and" else count, kind, target)
-        if logic == "and" and c["and_filter_strict"]:
+        exact_tags = self.merge_tag_filters(terms, tag_terms) if mode == "tag" else tag_terms
+        fetch_count = count * 3 if mode == "tag" else (count * 2 if logic == "and" else count)
+        items = await self.collect_page_search(api, query, fetch_count, kind, target, exact_tags)
+        # tag / tag_and 搜索必须最终再按作品 tags 做单标签精确过滤，避免 Pixiv 返回近似标签。
+        if mode == "tag":
+            items = [x for x in items if self.match_tag_filter(x, exact_tags)]
+        elif logic == "and" and c["and_filter_strict"]:
             items = [x for x in items if self.and_match(x, terms, mode)]
         return items[:count]
 
-    async def collect_rank(self, rank_mode, count, kind="illust"):
-        api = await self.api()
+    async def collect_rank(self, rank_mode, count, kind="illust", tag_terms=None):
+        self._last_requested_count = count
         mode_map = {"daily": "day", "day": "day", "weekly": "week", "week": "week", "monthly": "month", "month": "month", "rookie": "rookie"}
         rank_mode = mode_map.get(str(rank_mode or "daily").lower(), str(rank_mode or "day"))
         if kind == "illust":
-            resp = await self.api_call("illust_ranking", mode=rank_mode)
-        else:
-            # pixivpy3 当前没有 novel_ranking，小说榜第一版降级为推荐小说。
-            # 保留 /pixivc_novel_rank 命令入口，后续可替换为 Web API 榜单实现。
-            resp = await self.api_call("novel_recommended")
-        items = [x for x in extract_items(resp, kind) if self.pass_filter(x, kind)]
-        return unique_items(items)[:count]
+            return await self.collect_paginated_illust("illust_ranking", count, mode=rank_mode, tag_terms=tag_terms)
+        # pixivpy3 当前没有 novel_ranking，小说榜第一版降级为推荐小说。
+        # 保留 /pixivc_novel_rank 命令入口，后续可替换为 Web API 榜单实现。
+        return await self.collect_paginated_novel("novel_recommended", count)
 
-    async def collect_user(self, user_id, count, kind="illust"):
+    async def collect_user(self, user_id, count, kind="illust", tag_terms=None):
+        self._last_requested_count = count
         if not str(user_id).isdigit():
             raise RuntimeError("用户ID必须是数字")
-        api = await self.api()
         if kind == "illust":
-            resp = await self.api_call("user_illusts", int(user_id), type="illust")
-        else:
-            resp = await self.api_call("user_novels", int(user_id))
-        items = [x for x in extract_items(resp, kind) if self.pass_filter(x, kind)]
-        return unique_items(items)[:count]
+            return await self.collect_paginated_illust("user_illusts", count, int(user_id), type="illust", tag_terms=tag_terms)
+        return await self.collect_paginated_novel("user_novels", count, int(user_id))
 
-    async def collect_discovery(self, count):
+    async def collect_discovery(self, count, tag_terms=None):
+        self._last_requested_count = count
         api = await self.api()
-        resp = await self.api_call("illust_recommended", include_ranking_illusts=True)
-        items = [x for x in extract_items(resp, "illust") if self.pass_filter(x, "illust")]
-        return unique_items(items)[:count]
+        items = []
+        next_qs = None
+        max_pages = self.effective_search_max_depth()
+        reached_limit = True
+        for _ in range(max_pages):
+            if next_qs:
+                resp = await self.api_call("illust_recommended", **next_qs)
+            else:
+                resp = await self.api_call("illust_recommended", include_ranking_illusts=True)
+            raw_batch = extract_items(resp, "illust")
+            reasons = {"r18": 0, "ai": 0, "bookmarks": 0, "views": 0, "likes": 0, "tag": 0}
+            batch = []
+            for x in raw_batch:
+                reason = self.filter_reason(x, "illust")
+                if reason == "pass":
+                    if self.match_tag_filter(x, tag_terms):
+                        batch.append(x)
+                    else:
+                        reasons["tag"] += 1
+                elif reason in reasons:
+                    reasons[reason] += 1
+            items = unique_items(items + batch)
+            self.set_debug_info("illust 发现分页", resp, len(raw_batch), len(items), reasons)
+            if len(items) >= count:
+                reached_limit = False
+                self.set_collect_end_reason("已找到请求数量")
+                break
+            try:
+                next_qs = api.parse_qs(getv(resp, "next_url", None))
+            except Exception:
+                next_qs = None
+            if not next_qs:
+                reached_limit = False
+                self.set_collect_end_reason("Pixiv 没有下一页")
+                break
+        if reached_limit and len(items) < count:
+            self.set_collect_end_reason(f"达到最大搜索深度 {max_pages}")
+        return items[:count]
 
     def convert_image_proxy_url(self, url: str, proxy=None) -> str:
         c = self.cfg()
@@ -829,8 +968,6 @@ class PixivcCrawlerPlugin(Star):
                 total = len(urls)
                 out = []
                 for idx, url in enumerate(urls, 1):
-                    if len(saved) + len(out) >= c["max_count"]:
-                        break
                     ext = Path(url.split("?")[0]).suffix or ".jpg"
                     p = img_dir / f"{iid}_p{idx}_{title}{ext}"
                     async with sem:
@@ -846,8 +983,6 @@ class PixivcCrawlerPlugin(Star):
                 if isinstance(res, Exception):
                     continue
                 for row in res:
-                    if len(saved) >= c["max_count"]:
-                        break
                     saved.append(row)
 
         for p, item, idx, total in saved:
@@ -1112,10 +1247,15 @@ class PixivcCrawlerPlugin(Star):
                             yield event.plain_result(f"开始爬取 Pixiv：{label}。")
                         else:
                             logger.info("Pixivc 已静默刷新 access token，正在自动重试本次图片命令。")
+                        self._last_requested_count = None
+                        self._last_collect_end_reason = "未知原因"
                         items = await collector()
+                        requested_count = int(self._last_requested_count or len(items) or c["default_count"])
                         if not items:
-                            yield event.plain_result("没有找到符合条件的作品，可能是过滤条件过严或关键词无结果。" + ("\n" + self._last_debug if self._last_debug else ""))
+                            yield event.plain_result(f"没有找到符合条件的作品。原因：{self.collect_end_reason_text()}。" + ("\n" + self._last_debug if self._last_debug else ""))
                             return
+                        if len(items) < requested_count:
+                            yield event.plain_result(f"只找到 {len(items)}/{requested_count} 个符合条件的作品。原因：{self.collect_end_reason_text()}。" + ("\n" + self._last_debug if self._last_debug else ""))
                         self.save_last_items(event, items, label, "illust")
                         base, zip_path, saved = await self.prepare_illust_files(items, "pixivc_preview_" + label)
                         if not saved:
@@ -1125,7 +1265,15 @@ class PixivcCrawlerPlugin(Star):
                             zip_path.unlink(missing_ok=True)
                         except Exception:
                             pass
-                        yield event.plain_result(f"下载完成：{len(saved)} 张，正在发送图片合并转发预览。需要 original ZIP 请发送 /pixivc_get_zip")
+                        requested_count = len(items)
+                        work_count = len({item_id(item) for _, item, _, _ in saved})
+                        image_count = len(saved)
+                        extra = ""
+                        if work_count < requested_count:
+                            extra = "\n注意：部分作品图片下载失败，实际发送作品数少于已找到作品数。"
+                        limit_notice = getattr(self, "_last_count_limit_notice", "") or ""
+                        limit_text = f"{limit_notice}" if limit_notice else ""
+                        yield event.plain_result(f"下载完成：{work_count} 个作品，共 {image_count} 张图片。{limit_text}状态：{self.collect_end_reason_text()}。正在发送图片合并转发预览。需要 original ZIP 请发送 /pixivc_get_zip" + extra)
                         async for r in self.dispatch_illust_result(event, base, zip_path, saved):
                             yield r
                         return
@@ -1257,13 +1405,15 @@ class PixivcCrawlerPlugin(Star):
             lines.append(f"{i}. {tag}{suffix}")
         return "Pixivc 热门标签：\n" + "\n".join(lines) if lines else "没有找到热门标签。"
 
-    async def collect_paginated_illust(self, method_name: str, count: int, *args, **kwargs):
+    async def collect_paginated_illust(self, method_name: str, count: int, *args, tag_terms=None, **kwargs):
+        self._last_requested_count = count
         api = await self.api()
         c = self.cfg()
         items = []
         next_qs = None
-        max_pages = 1000 if c["search_pages"] == -1 else max(1, c["search_pages"])
+        max_pages = self.effective_search_max_depth()
         start_page = self.effective_start_page()
+        reached_limit = True
         for page in range(max_pages + start_page - 1):
             if next_qs:
                 resp = await self.api_call(method_name, **next_qs)
@@ -1271,16 +1421,34 @@ class PixivcCrawlerPlugin(Star):
                 resp = await self.api_call(method_name, *args, **kwargs)
             current_page = page + 1
             if current_page >= start_page:
-                batch = [x for x in extract_items(resp, "illust") if self.pass_filter(x, "illust")]
+                raw_batch = extract_items(resp, "illust")
+                reasons = {"r18": 0, "ai": 0, "bookmarks": 0, "views": 0, "likes": 0, "tag": 0}
+                batch = []
+                for x in raw_batch:
+                    reason = self.filter_reason(x, "illust")
+                    if reason == "pass":
+                        if self.match_tag_filter(x, tag_terms):
+                            batch.append(x)
+                        else:
+                            reasons["tag"] += 1
+                    elif reason in reasons:
+                        reasons[reason] += 1
                 items = unique_items(items + batch)
+                self.set_debug_info(f"{method_name} 分页", resp, len(raw_batch), len(items), reasons)
                 if len(items) >= count:
+                    reached_limit = False
+                    self.set_collect_end_reason("已找到请求数量")
                     break
             try:
                 next_qs = api.parse_qs(getv(resp, "next_url", None))
             except Exception:
                 next_qs = None
             if not next_qs:
+                reached_limit = False
+                self.set_collect_end_reason("Pixiv 没有下一页")
                 break
+        if reached_limit and len(items) < count:
+            self.set_collect_end_reason(f"达到最大搜索深度 {max_pages}")
         return items[:count]
 
     async def collect_paginated_novel(self, method_name: str, count: int, *args, **kwargs):
@@ -1288,7 +1456,7 @@ class PixivcCrawlerPlugin(Star):
         c = self.cfg()
         items = []
         next_qs = None
-        max_pages = 1000 if c["search_pages"] == -1 else max(1, c["search_pages"])
+        max_pages = self.effective_search_max_depth()
         start_page = self.effective_start_page()
         for page in range(max_pages + start_page - 1):
             if next_qs:
@@ -1323,7 +1491,7 @@ class PixivcCrawlerPlugin(Star):
         c = self.cfg()
         users = []
         next_qs = None
-        max_pages = 1000 if c["search_pages"] == -1 else max(1, c["search_pages"])
+        max_pages = self.effective_search_max_depth()
         start_page = self.effective_start_page()
         for page in range(max_pages + start_page - 1):
             if next_qs:
@@ -1475,8 +1643,8 @@ class PixivcCrawlerPlugin(Star):
         if not self.require_admin_feature(event, "admin_bookmarks"):
             yield event.plain_result(self.admin_denied_text())
             return
-        _, count = self.parse_query_count(full_command_args(event, "pixivc_bookmarks", args))
-        async for r in self.run_illust_job(event, "my_bookmarks", lambda: self._collect_my_bookmarks(count)):
+        _, count, tag_terms = self.parse_query_count_tags(full_command_args(event, "pixivc_bookmarks", args))
+        async for r in self.run_illust_job(event, "my_bookmarks", lambda: self._collect_my_bookmarks(count, tag_terms)):
             yield r
 
     async def _get_api_user_id(self):
@@ -1486,11 +1654,11 @@ class PixivcCrawlerPlugin(Star):
         except Exception:
             return 0
 
-    async def _collect_my_bookmarks(self, count: int):
+    async def _collect_my_bookmarks(self, count: int, tag_terms=None):
         uid = await self._get_api_user_id()
         if not uid:
             raise RuntimeError("无法获取当前 Pixiv 用户ID，请检查 refresh_token。")
-        return await self.collect_paginated_illust("user_bookmarks_illust", count, uid)
+        return await self.collect_paginated_illust("user_bookmarks_illust", count, uid, tag_terms=tag_terms)
 
     async def _collect_my_following(self, count: int):
         uid = await self._get_api_user_id()
@@ -1505,11 +1673,11 @@ class PixivcCrawlerPlugin(Star):
 
     @filter.command("pixivc_related")
     async def pixivc_related(self, event: AstrMessageEvent, args: str = ""):
-        q, count = self.parse_query_count(full_command_args(event, "pixivc_related", args))
+        q, count, tag_terms = self.parse_query_count_tags(full_command_args(event, "pixivc_related", args))
         if not q.isdigit():
-            yield event.plain_result("用法：/pixivc_related 作品ID [数量]")
+            yield event.plain_result("用法：/pixivc_related 作品ID")
             return
-        async for r in self.run_illust_job(event, f"related_{q}", lambda: self.collect_paginated_illust("illust_related", count, int(q))):
+        async for r in self.run_illust_job(event, f"related_{q}", lambda: self.collect_paginated_illust("illust_related", count, int(q), tag_terms=tag_terms)):
             yield r
 
     @filter.command("pixivc_follow_add")
@@ -1550,14 +1718,14 @@ class PixivcCrawlerPlugin(Star):
         if not self.require_admin_feature(event, "admin_follow_latest"):
             yield event.plain_result(self.admin_denied_text())
             return
-        _, count = self.parse_query_count(full_command_args(event, "pixivc_follow_latest", args))
-        async for r in self.run_illust_job(event, "follow_latest", lambda: self.collect_paginated_illust("illust_follow", count, restrict="public")):
+        _, count, tag_terms = self.parse_query_count_tags(full_command_args(event, "pixivc_follow_latest", args))
+        async for r in self.run_illust_job(event, "follow_latest", lambda: self.collect_paginated_illust("illust_follow", count, restrict="public", tag_terms=tag_terms)):
             yield r
 
     @filter.command("pixivc_new")
     async def pixivc_new(self, event: AstrMessageEvent, args: str = ""):
-        _, count = self.parse_query_count(full_command_args(event, "pixivc_new", args))
-        async for r in self.run_illust_job(event, "new", lambda: self.collect_paginated_illust("illust_new", count, content_type="illust")):
+        _, count, tag_terms = self.parse_query_count_tags(full_command_args(event, "pixivc_new", args))
+        async for r in self.run_illust_job(event, "new", lambda: self.collect_paginated_illust("illust_new", count, content_type="illust", tag_terms=tag_terms)):
             yield r
 
     @filter.command("pixivc_recommended_users")
@@ -1573,7 +1741,7 @@ class PixivcCrawlerPlugin(Star):
     async def pixivc_user_search(self, event: AstrMessageEvent, args: str = ""):
         q, count = self.parse_query_count(full_command_args(event, "pixivc_user_search", args))
         if not q:
-            yield event.plain_result("用法：/pixivc_user_search 关键词 [数量]")
+            yield event.plain_result("用法：/pixivc_user_search 关键词")
             return
         users = await self.collect_paginated_users("search_user", count, q)
         yield event.plain_result(self.format_users(users, count))
@@ -1593,7 +1761,7 @@ class PixivcCrawlerPlugin(Star):
             f"image_proxy_host：{c['image_proxy_host']}\n"
             f"default_count：{c['default_count']}\n"
             f"max_count：{c['max_count']}\n"
-            f"search_start_page：{c['search_start_page']}\n"
+            f"search_max_depth：{c['search_max_depth']}\n"
             f"image_quality：{c['image_quality']}\n"
             f"allow_r18_group：{c['allow_r18_group']}\n"
             f"allow_r18_private：{c['allow_r18_private']}\n"
@@ -1647,7 +1815,8 @@ class PixivcCrawlerPlugin(Star):
                     if not saved:
                         yield event.plain_result("original 下载失败，请检查代理或 Pixiv 访问。")
                         return
-                    self.save_last_zip(event, zip_path, label, len(saved), kind="illust")
+                    work_count = len({item_id(item) for _, item, _, _ in saved})
+                    self.save_last_zip(event, zip_path, label, work_count, kind="illust")
                     async for r in self.send_zip(event, zip_path):
                         yield r
                     shutil.rmtree(base, ignore_errors=True)
@@ -1708,11 +1877,15 @@ class PixivcCrawlerPlugin(Star):
     @filter.command("pixivc_key")
     async def pixivc_key(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_key", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         if not q:
-            yield event.plain_result("用法：/pixivc_key 关键词 [数量]")
+            yield event.plain_result("用法：/pixivc_key 关键词")
             return
-        async for r in self.run_illust_job(event, f"key_{q}", lambda: self.collect_and_or([q], count, "illust", "key", "single")):
+        denied = self.require_r18_query_allowed(event, q, tag_terms)
+        if denied:
+            yield event.plain_result(denied)
+            return
+        async for r in self.run_illust_job(event, f"key_{q}", lambda: self.collect_and_or([q], count, "illust", "key", "single", tag_terms)):
             yield r
 
     @filter.command("pixivc_tag")
@@ -1720,7 +1893,11 @@ class PixivcCrawlerPlugin(Star):
         args = full_command_args(event, "pixivc_tag", args)
         q, count = self.parse_query_count(args)
         if not q:
-            yield event.plain_result("用法：/pixivc_tag 标签 [数量]")
+            yield event.plain_result("用法：/pixivc_tag 标签")
+            return
+        denied = self.require_r18_query_allowed(event, q)
+        if denied:
+            yield event.plain_result(denied)
             return
         async for r in self.run_illust_job(event, f"tag_{q}", lambda: self.collect_and_or([q], count, "illust", "tag", "single")):
             yield r
@@ -1728,63 +1905,87 @@ class PixivcCrawlerPlugin(Star):
     @filter.command("pixivc_key_and")
     async def pixivc_key_and(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_key_and", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivc_key_and 关键词1,关键词2 [数量]")
+            yield event.plain_result("用法：/pixivc_key_and 关键词1,关键词2")
             return
-        async for r in self.run_illust_job(event, f"key_and_{q}", lambda: self.collect_and_or(terms, count, "illust", "key", "and")):
+        denied = self.require_r18_query_allowed(event, terms, tag_terms)
+        if denied:
+            yield event.plain_result(denied)
+            return
+        async for r in self.run_illust_job(event, f"key_and_{q}", lambda: self.collect_and_or(terms, count, "illust", "key", "and", tag_terms)):
             yield r
 
     @filter.command("pixivc_key_or")
     async def pixivc_key_or(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_key_or", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivc_key_or 关键词1,关键词2 [数量]")
+            yield event.plain_result("用法：/pixivc_key_or 关键词1,关键词2")
             return
-        async for r in self.run_illust_job(event, f"key_or_{q}", lambda: self.collect_and_or(terms, count, "illust", "key", "or")):
+        denied = self.require_r18_query_allowed(event, terms, tag_terms)
+        if denied:
+            yield event.plain_result(denied)
+            return
+        async for r in self.run_illust_job(event, f"key_or_{q}", lambda: self.collect_and_or(terms, count, "illust", "key", "or", tag_terms)):
             yield r
 
     @filter.command("pixivc_tag_and")
     async def pixivc_tag_and(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_tag_and", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivc_tag_and 标签1,标签2 [数量]")
+            yield event.plain_result("用法：/pixivc_tag_and 标签1,标签2")
             return
-        async for r in self.run_illust_job(event, f"tag_and_{q}", lambda: self.collect_and_or(terms, count, "illust", "tag", "and")):
+        denied = self.require_r18_query_allowed(event, terms, tag_terms)
+        if denied:
+            yield event.plain_result(denied)
+            return
+        async for r in self.run_illust_job(event, f"tag_and_{q}", lambda: self.collect_and_or(terms, count, "illust", "tag", "and", tag_terms)):
             yield r
 
     @filter.command("pixivc_tag_or")
     async def pixivc_tag_or(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_tag_or", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivc_tag_or 标签1,标签2 [数量]")
+            yield event.plain_result("用法：/pixivc_tag_or 标签1,标签2")
             return
-        async for r in self.run_illust_job(event, f"tag_or_{q}", lambda: self.collect_and_or(terms, count, "illust", "tag", "or")):
+        denied = self.require_r18_query_allowed(event, terms, tag_terms)
+        if denied:
+            yield event.plain_result(denied)
+            return
+        async for r in self.run_illust_job(event, f"tag_or_{q}", lambda: self.collect_and_or(terms, count, "illust", "tag", "or", tag_terms)):
             yield r
 
     @filter.command("pixivc_rank")
     async def pixivc_rank(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_rank", args)
-        q, count = self.parse_query_count(args or "daily")
+        q, count, tag_terms = self.parse_query_count_tags(args or "daily")
         rank_mode = q or "daily"
-        async for r in self.run_illust_job(event, f"rank_{rank_mode}", lambda: self.collect_rank(rank_mode, count, "illust")):
+        denied = self.require_r18_query_allowed(event, tag_terms)
+        if denied:
+            yield event.plain_result(denied)
+            return
+        async for r in self.run_illust_job(event, f"rank_{rank_mode}", lambda: self.collect_rank(rank_mode, count, "illust", tag_terms)):
             yield r
 
     @filter.command("pixivc_user")
     async def pixivc_user(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_user", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         if not q:
-            yield event.plain_result("用法：/pixivc_user 用户ID [数量]")
+            yield event.plain_result("用法：/pixivc_user 用户ID")
             return
-        async for r in self.run_illust_job(event, f"user_{q}", lambda: self.collect_user(q, count, "illust")):
+        denied = self.require_r18_query_allowed(event, tag_terms)
+        if denied:
+            yield event.plain_result(denied)
+            return
+        async for r in self.run_illust_job(event, f"user_{q}", lambda: self.collect_user(q, count, "illust", tag_terms)):
             yield r
 
     @filter.command("pixivc_discovery")
@@ -1793,8 +1994,12 @@ class PixivcCrawlerPlugin(Star):
             yield event.plain_result(self.admin_denied_text())
             return
         args = full_command_args(event, "pixivc_discovery", args)
-        _, count = self.parse_query_count(args)
-        async for r in self.run_illust_job(event, "discovery", lambda: self.collect_discovery(count)):
+        _, count, tag_terms = self.parse_query_count_tags(args)
+        denied = self.require_r18_query_allowed(event, tag_terms)
+        if denied:
+            yield event.plain_result(denied)
+            return
+        async for r in self.run_illust_job(event, "discovery", lambda: self.collect_discovery(count, tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_key")
@@ -1802,7 +2007,7 @@ class PixivcCrawlerPlugin(Star):
         args = full_command_args(event, "pixivc_novel_key", args)
         q, count = self.parse_query_count(args)
         if not q:
-            yield event.plain_result("用法：/pixivc_novel_key 关键词 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_key 关键词")
             return
         async for r in self.run_novel_job(event, f"key_{q}", lambda: self.collect_and_or([q], count, "novel", "key", "single")):
             yield r
@@ -1812,7 +2017,7 @@ class PixivcCrawlerPlugin(Star):
         args = full_command_args(event, "pixivc_novel_tag", args)
         q, count = self.parse_query_count(args)
         if not q:
-            yield event.plain_result("用法：/pixivc_novel_tag 标签 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_tag 标签")
             return
         async for r in self.run_novel_job(event, f"tag_{q}", lambda: self.collect_and_or([q], count, "novel", "tag", "single")):
             yield r
@@ -1823,7 +2028,7 @@ class PixivcCrawlerPlugin(Star):
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivc_novel_key_and 关键词1,关键词2 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_key_and 关键词1,关键词2")
             return
         async for r in self.run_novel_job(event, f"key_and_{q}", lambda: self.collect_and_or(terms, count, "novel", "key", "and")):
             yield r
@@ -1834,7 +2039,7 @@ class PixivcCrawlerPlugin(Star):
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivc_novel_key_or 关键词1,关键词2 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_key_or 关键词1,关键词2")
             return
         async for r in self.run_novel_job(event, f"key_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "key", "or")):
             yield r
@@ -1845,7 +2050,7 @@ class PixivcCrawlerPlugin(Star):
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivc_novel_tag_and 标签1,标签2 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_tag_and 标签1,标签2")
             return
         async for r in self.run_novel_job(event, f"tag_and_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "and")):
             yield r
@@ -1856,7 +2061,7 @@ class PixivcCrawlerPlugin(Star):
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivc_novel_tag_or 标签1,标签2 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_tag_or 标签1,标签2")
             return
         async for r in self.run_novel_job(event, f"tag_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "or")):
             yield r
@@ -1884,7 +2089,7 @@ class PixivcCrawlerPlugin(Star):
         args = full_command_args(event, "pixivc_novel_user", args)
         q, count = self.parse_query_count(args)
         if not q:
-            yield event.plain_result("用法：/pixivc_novel_user 用户ID [数量]")
+            yield event.plain_result("用法：/pixivc_novel_user 用户ID")
             return
         async for r in self.run_novel_job(event, f"user_{q}", lambda: self.collect_user(q, count, "novel")):
             yield r

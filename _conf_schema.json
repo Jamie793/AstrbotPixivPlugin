@@ -26,17 +26,17 @@
     "hint": "无代理下载图片时使用的反代地址。默认 https://i.pixiv.re，会把 https://i.pximg.net/... 转为 https://i.pixiv.re/...。"
   },
   "default_count": {
-    "description": "默认爬取数量",
+    "description": "默认爬取作品数量",
     "type": "int",
-    "hint": "用户命令不填写数量时使用的默认爬取数量。默认 20。",
+    "hint": "用户命令不填写数量时使用的默认作品数量。数量按作品统计，不按图片页数统计；多页作品会下载/发送该作品的多张图片。默认 20。",
     "default": 20,
     "min": 1,
     "max": 10000
   },
   "max_count": {
-    "description": "单次最大爬取数量",
+    "description": "单次最大爬取作品数量",
     "type": "int",
-    "hint": "单次命令允许爬取的最大数量。已取消固定 20 硬限制；实际数量受 Pixiv 返回、网络、平台发送限制和该配置影响。",
+    "hint": "单次命令允许爬取的最大作品数量。数量按作品统计，不按图片页数统计；多页作品会下载/发送该作品的多张图片。实际数量受 Pixiv 返回、过滤条件、网络、平台发送限制和该配置影响。",
     "default": 100,
     "min": 1,
     "max": 10000
@@ -44,7 +44,7 @@
   "image_quality": {
     "description": "合并转发预览图片质量",
     "type": "string",
-    "hint": "仅控制合并转发/预览图片质量。ZIP 固定使用 original 原图；需要 ZIP 时发送 /pixivc_get_zip。",
+    "hint": "仅控制合并转发/预览图片质量。命令数量按作品统计；如果作品包含多页，预览会发送该作品的多张图片。ZIP 固定使用 original 原图；需要 ZIP 时发送 /pixivc_get_zip。",
     "default": "large",
     "options": [
       "medium",
@@ -94,21 +94,13 @@
     "max": 100000000,
     "hint": "默认 -1 为关闭过滤；设置为 0 或更大时启用最小点赞数过滤。"
   },
-  "search_pages": {
-    "description": "最多搜索页数",
+  "search_max_depth": {
+    "description": "最大搜索深度",
     "type": "int",
-    "hint": "默认 -1 为不限制页数；会持续翻页直到找到目标数量，或 Pixiv 没有下一页为止。设置为 1 或更大时限制最多搜索页数。",
-    "default": -1,
-    "min": -1,
-    "max": 1000
-  },
-  "search_start_page": {
-    "description": "搜索起始页",
-    "type": "int",
-    "default": 1,
+    "hint": "当作品数量不够时，会继续翻页/请求下一页尝试补足，直到达到命令请求的作品数量、Pixiv 没有下一页，或超过该最大搜索深度。默认 10。",
+    "default": 10,
     "min": 1,
-    "max": 1000,
-    "hint": "从第几页开始获取结果。默认 1 表示从第一页开始；设置为 2 表示跳过第一页，从第二页开始。适用于搜索、收藏、相关作品、关注动态、新作、推荐作者、用户搜索等分页接口。"
+    "max": 10000
   },
   "concurrent_downloads": {
     "description": "并发下载数量",

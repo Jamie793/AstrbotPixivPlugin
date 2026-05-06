@@ -49,14 +49,15 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 - image_proxy_host：图片反代地址，默认 https://i.pixiv.re
   开关关闭后，即使没有 proxy 也会直接请求 Pixiv 图片原始地址。
 - image_quality：合并转发预览图片质量，ZIP 固定 original
-- max_count：单次最大返回数量
+- max_count：单次最大返回作品数量，按作品统计，不按图片页数统计；多页作品会发送/打包多张图片
+- 图片列表命令支持 t标签1,标签2 进行标签筛选，例如 /pixivc_discovery n5 t女の子,初音ミク；多个 tag 按 AND 过滤，只匹配作品 tags 里的单个标签，不匹配标题/简介/作者/关键词，且为全字精确匹配。/pixivc_tag 本身就是标签搜索，会按作品 tags 做单标签精确过滤
 - allow_r18_group：群聊是否允许 R18
 - allow_r18_private：私聊是否允许 R18
 - allow_ai：是否允许 AI 作品
 - min_bookmarks：最小收藏数，-1 表示关闭过滤
 - min_views：最小浏览数，-1 表示关闭过滤
 - min_likes：最小点赞数，-1 表示关闭过滤
-- search_pages：最多搜索页数，-1 表示不限制
+- search_max_depth：最大搜索深度；作品数量不够时继续翻页补足，直到够数、没有下一页或达到该深度
 - auto_clean_enabled：每日自动清理缓存
 - Admin 权限开关：控制部分功能是否仅 bot 管理者可用
 
@@ -87,7 +88,7 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 
 ## 图片命令
 
-1. /pixivc_key xxx [数量]
+1. /pixivc_key xxx
 
 按关键词搜索图片作品。
 
@@ -95,7 +96,7 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 
 /pixivc_key 原神 20
 
-2. /pixivc_tag xxx [数量]
+2. /pixivc_tag xxx
 
 按标签搜索图片作品。
 
@@ -103,7 +104,7 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 
 /pixivc_tag フリーナ 20
 
-3. /pixivc_key_and xxx,xxx2 [数量]
+3. /pixivc_key_and xxx,xxx2
 
 关键词 AND 搜索。
 
@@ -111,19 +112,19 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 
 /pixivc_key_and 原神,フリーナ 20
 
-4. /pixivc_key_or xxx,xxx2 [数量]
+4. /pixivc_key_or xxx,xxx2
 
 关键词 OR 搜索。
 
-5. /pixivc_tag_and xxx,xxx2 [数量]
+5. /pixivc_tag_and xxx,xxx2
 
 标签 AND 搜索。
 
-6. /pixivc_tag_or xxx,xxx2 [数量]
+6. /pixivc_tag_or xxx,xxx2
 
 标签 OR 搜索。
 
-7. /pixivc_rank daily [数量]
+7. /pixivc_rank daily
 
 排行榜。
 
@@ -131,35 +132,30 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 
 /pixivc_rank daily 20
 
-8. /pixivc_user 123456 [数量]
+8. /pixivc_user 123456
 
 获取指定用户作品。
 
-9. /pixivc_discovery [数量]
+9. /pixivc_discovery
 
 获取推荐作品。是否需要 Admin 由后台配置控制。
 
 ## 起始页参数
 
-支持在命令中指定从第几页开始获取。
+只支持 p3 这种格式指定从第几页搜索结果开始，p3 可放在参数任意位置。
 
 示例：
 
-/pixivc_tag 原神 20 page=3
+/pixivc_tag 原神 p3 n20 m30
+/pixivc_tag p3 原神 n20 m30
+/pixivc_discovery p3 n5 m30
 
-等价写法：
+说明：
 
-/pixivc_tag 原神 20 p=3
-/pixivc_tag 原神 20 start=3
-/pixivc_tag 原神 20 start_page=3
-/pixivc_tag 原神 20 第3页
-/pixivc_tag 原神 20 p3
-/pixivc_tag 原神 20 3
-
-最后一种写法中：
-
-- 20 表示数量
-- 3 表示起始页
+- p3 表示从 Pixiv 搜索结果第 3 页开始，不是作品图片页
+- n20 / n5 表示作品数量，不是图片数量
+- m30 表示本次命令最大搜索深度为 30 页
+- page=3、p=3、第3页、末尾裸数字页数等写法不再支持，避免和 n 数量格式混淆
 
 ## ZIP 下载逻辑
 
@@ -181,16 +177,16 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 
 ## 小说命令
 
-1. /pixivc_novel_key xxx [数量]
-2. /pixivc_novel_tag xxx [数量]
-3. /pixivc_novel_key_and xxx,xxx2 [数量]
-4. /pixivc_novel_key_or xxx,xxx2 [数量]
-5. /pixivc_novel_tag_and xxx,xxx2 [数量]
-6. /pixivc_novel_tag_or xxx,xxx2 [数量]
-7. /pixivc_novel_rank daily [数量]
-8. /pixivc_novel_user 123456 [数量]
+1. /pixivc_novel_key xxx
+2. /pixivc_novel_tag xxx
+3. /pixivc_novel_key_and xxx,xxx2
+4. /pixivc_novel_key_or xxx,xxx2
+5. /pixivc_novel_tag_and xxx,xxx2
+6. /pixivc_novel_tag_or xxx,xxx2
+7. /pixivc_novel_rank daily
+8. /pixivc_novel_user 123456
 9. /pixivc_novel_id 123456789
-10. /pixivc_novel_recommended [数量]
+10. /pixivc_novel_recommended
 
 ## App API 扩展命令
 
@@ -198,18 +194,18 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 - /pixivc_illust_id 作品ID：获取作品详情
 - /pixivc_bookmark_add 作品ID：收藏作品
 - /pixivc_bookmark_del 作品ID：取消收藏作品
-- /pixivc_bookmarks [数量]：获取我的收藏作品
+- /pixivc_bookmarks：获取我的收藏作品
 - /pixivc_trending_tags：获取热门标签
-- /pixivc_related 作品ID [数量]：获取相关作品
+- /pixivc_related 作品ID：获取相关作品
 - /pixivc_follow_add 用户ID：关注作者
 - /pixivc_follow_del 用户ID：取关作者
-- /pixivc_following [数量]：获取关注列表
-- /pixivc_follow_latest [数量]：获取已关注作者最新作品
-- /pixivc_new [数量]：获取新作
-- /pixivc_recommended_users [数量]：获取推荐作者列表
-- /pixivc_user_search 关键词 [数量]：搜索用户
+- /pixivc_following：获取关注列表
+- /pixivc_follow_latest：获取已关注作者最新作品
+- /pixivc_new：获取新作
+- /pixivc_recommended_users：获取推荐作者列表
+- /pixivc_user_search 关键词：搜索用户
 - /pixivc_debug_last：查看最近一次提取和过滤调试信息
-- /pixivc_novel_recommended [数量]：获取推荐小说，支持 page 参数
+- /pixivc_novel_recommended：获取推荐小说，支持 p 参数
 - /pixivc_get_token：生成 Pixiv 官方 OAuth 登录链接，获取 token
 
 ## R18 说明
@@ -282,7 +278,7 @@ data/downloads
 
 1. 本插件依赖 Pixiv App API，网络环境需要能访问 Pixiv。无代理时可通过图片反代下载图片，但 Pixiv API 本身仍需要可访问。
 2. refresh_token 失效后需要重新获取。
-3. original 原图可能体积较大，请合理设置 max_count 和 max_zip_mb。
+3. original 原图可能体积较大，请合理设置 max_count 和 max_zip_mb。max_count 按作品数统计，多页作品会包含多张图片。
 4. 群聊开启 R18 请谨慎。
 5. 不要提交本地 config、token、下载缓存到仓库。
 
