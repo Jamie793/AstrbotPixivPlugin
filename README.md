@@ -50,7 +50,7 @@ https://github.com/Jamie793/AstrbotPixivPlugin
   开关关闭后，即使没有 proxy 也会直接请求 Pixiv 图片原始地址。
 - image_quality：合并转发预览图片质量，ZIP 固定 original
 - max_count：单次最大返回作品数量，按作品统计，不按图片页数统计；多页作品会发送/打包多张图片
-- 图片列表命令支持 t标签1,标签2 进行标签筛选，例如 /pixivc_discovery n5 t女の子,初音ミク；多个 tag 按 AND 过滤，只匹配作品 tags 里的单个标签，不匹配标题/简介/作者/关键词，且为全字精确匹配。/pixivc_tag 本身就是标签搜索，会按作品 tags 做单标签精确过滤
+- 图片/小说列表命令支持 t标签1,标签2 进行标签筛选，例如 /pixivc_discovery n5 t女の子,初音ミク；多个 tag 按 AND 过滤，只匹配作品/小说 tags 里的单个标签，不匹配标题/简介/作者/关键词，且为全字精确匹配。/pixivc_tag 本身就是标签搜索，会按作品 tags 做单标签精确过滤
 - allow_r18_group：群聊是否允许 R18
 - allow_r18_private：私聊是否允许 R18
 - allow_ai：是否允许 AI 作品

@@ -85,7 +85,7 @@ HELP_TEXT = """Pixivc 爬虫帮助：
 - n x 表示作品数量为 x，例如 n5 表示 5 个作品；默认 n20，最大值由 max_count 配置决定。数量按作品统计，不按图片页数统计。
 - p x 表示从 Pixiv 结果第 x 页开始，例如 p3 表示从第 3 页开始；不是作品图片页。
 - m x 表示本次命令最大搜索深度为 x，例如 m30 表示最多搜索 30 页；不写则使用插件配置 search_max_depth。
-- t x 表示按作品标签筛选，例如 t女の子,初音ミク；只匹配作品 tags 里的单个标签，不匹配标题、简介、作者或关键词。多个标签按 AND 处理，作品需同时包含这些标签。标签为全字精确匹配，t空 只匹配标签“空”，不会匹配“天空”。
+- t x 表示按作品/小说标签筛选，例如 t女の子,初音ミク；只匹配作品/小说 tags 里的单个标签，不匹配标题、简介、作者或关键词。多个标签按 AND 处理，结果需同时包含这些标签。标签为全字精确匹配，t空 只匹配标签“空”，不会匹配“天空”。
 - 示例：/pixivc_discovery n5 p3 m30 t女の子,初音ミク
 - 示例：/pixivc_tag 原神 n20 p3 m30
 - /pixivc_tag 本身就是标签搜索，会按作品 tags 做单标签精确过滤。
@@ -876,7 +876,7 @@ class PixivcCrawlerPlugin(Star):
             return await self.collect_paginated_illust("illust_ranking", count, mode=rank_mode, tag_terms=tag_terms)
         # pixivpy3 当前没有 novel_ranking，小说榜第一版降级为推荐小说。
         # 保留 /pixivc_novel_rank 命令入口，后续可替换为 Web API 榜单实现。
-        return await self.collect_paginated_novel("novel_recommended", count)
+        return await self.collect_paginated_novel("novel_recommended", count, tag_terms=tag_terms)
 
     async def collect_user(self, user_id, count, kind="illust", tag_terms=None):
         self._last_requested_count = count
@@ -884,7 +884,7 @@ class PixivcCrawlerPlugin(Star):
             raise RuntimeError("用户ID必须是数字")
         if kind == "illust":
             return await self.collect_paginated_illust("user_illusts", count, int(user_id), type="illust", tag_terms=tag_terms)
-        return await self.collect_paginated_novel("user_novels", count, int(user_id))
+        return await self.collect_paginated_novel("user_novels", count, int(user_id), tag_terms=tag_terms)
 
     async def collect_discovery(self, count, tag_terms=None):
         self._last_requested_count = count
@@ -1451,7 +1451,8 @@ class PixivcCrawlerPlugin(Star):
             self.set_collect_end_reason(f"达到最大搜索深度 {max_pages}")
         return items[:count]
 
-    async def collect_paginated_novel(self, method_name: str, count: int, *args, **kwargs):
+    async def collect_paginated_novel(self, method_name: str, count: int, *args, tag_terms=None, **kwargs):
+        self._last_requested_count = count
         api = await self.api()
         c = self.cfg()
         items = []
@@ -1466,24 +1467,31 @@ class PixivcCrawlerPlugin(Star):
             current_page = page + 1
             if current_page >= start_page:
                 raw_batch = extract_items(resp, "novel")
-                reasons = {"r18": 0, "ai": 0, "bookmarks": 0, "views": 0, "likes": 0}
+                reasons = {"r18": 0, "ai": 0, "bookmarks": 0, "views": 0, "likes": 0, "tag": 0}
                 batch = []
                 for x in raw_batch:
                     reason = self.filter_reason(x, "novel")
                     if reason == "pass":
-                        batch.append(x)
+                        if self.match_tag_filter(x, tag_terms):
+                            batch.append(x)
+                        else:
+                            reasons["tag"] += 1
                     elif reason in reasons:
                         reasons[reason] += 1
                 items = unique_items(items + batch)
                 self.set_debug_info(f"{method_name} 分页", resp, len(raw_batch), len(items), reasons)
                 if len(items) >= count:
+                    self.set_collect_end_reason("已找到请求数量")
                     break
             try:
                 next_qs = api.parse_qs(getv(resp, "next_url", None))
             except Exception:
                 next_qs = None
             if not next_qs:
+                self.set_collect_end_reason("Pixiv 没有下一页")
                 break
+        if len(items) < count and self.collect_end_reason_text() == "未知原因":
+            self.set_collect_end_reason(f"达到最大搜索深度 {max_pages}")
         return items[:count]
 
     async def collect_paginated_users(self, method_name: str, count: int, *args, **kwargs):
@@ -2005,65 +2013,65 @@ class PixivcCrawlerPlugin(Star):
     @filter.command("pixivc_novel_key")
     async def pixivc_novel_key(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_key", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         if not q:
             yield event.plain_result("用法：/pixivc_novel_key 关键词")
             return
-        async for r in self.run_novel_job(event, f"key_{q}", lambda: self.collect_and_or([q], count, "novel", "key", "single")):
+        async for r in self.run_novel_job(event, f"key_{q}", lambda: self.collect_and_or([q], count, "novel", "key", "single", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_tag")
     async def pixivc_novel_tag(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_tag", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         if not q:
             yield event.plain_result("用法：/pixivc_novel_tag 标签")
             return
-        async for r in self.run_novel_job(event, f"tag_{q}", lambda: self.collect_and_or([q], count, "novel", "tag", "single")):
+        async for r in self.run_novel_job(event, f"tag_{q}", lambda: self.collect_and_or([q], count, "novel", "tag", "single", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_key_and")
     async def pixivc_novel_key_and(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_key_and", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_novel_key_and 关键词1,关键词2")
             return
-        async for r in self.run_novel_job(event, f"key_and_{q}", lambda: self.collect_and_or(terms, count, "novel", "key", "and")):
+        async for r in self.run_novel_job(event, f"key_and_{q}", lambda: self.collect_and_or(terms, count, "novel", "key", "and", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_key_or")
     async def pixivc_novel_key_or(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_key_or", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_novel_key_or 关键词1,关键词2")
             return
-        async for r in self.run_novel_job(event, f"key_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "key", "or")):
+        async for r in self.run_novel_job(event, f"key_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "key", "or", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_tag_and")
     async def pixivc_novel_tag_and(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_tag_and", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_novel_tag_and 标签1,标签2")
             return
-        async for r in self.run_novel_job(event, f"tag_and_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "and")):
+        async for r in self.run_novel_job(event, f"tag_and_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "and", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_tag_or")
     async def pixivc_novel_tag_or(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_tag_or", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_novel_tag_or 标签1,标签2")
             return
-        async for r in self.run_novel_job(event, f"tag_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "or")):
+        async for r in self.run_novel_job(event, f"tag_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "or", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_recommended", alias={"pixivc_novel_discovery"})
@@ -2072,26 +2080,26 @@ class PixivcCrawlerPlugin(Star):
             yield event.plain_result(self.admin_denied_text())
             return
         args = full_command_args(event, "pixivc_novel_recommended", args)
-        _, count = self.parse_query_count(args)
-        async for r in self.run_novel_job(event, "recommended", lambda: self.collect_paginated_novel("novel_recommended", count)):
+        _, count, tag_terms = self.parse_query_count_tags(args)
+        async for r in self.run_novel_job(event, "recommended", lambda: self.collect_paginated_novel("novel_recommended", count, tag_terms=tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_rank")
     async def pixivc_novel_rank(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_rank", args)
-        q, count = self.parse_query_count(args or "daily")
+        q, count, tag_terms = self.parse_query_count_tags(args or "daily")
         rank_mode = q or "daily"
-        async for r in self.run_novel_job(event, f"rank_{rank_mode}", lambda: self.collect_rank(rank_mode, count, "novel")):
+        async for r in self.run_novel_job(event, f"rank_{rank_mode}", lambda: self.collect_rank(rank_mode, count, "novel", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_user")
     async def pixivc_novel_user(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_user", args)
-        q, count = self.parse_query_count(args)
+        q, count, tag_terms = self.parse_query_count_tags(args)
         if not q:
             yield event.plain_result("用法：/pixivc_novel_user 用户ID")
             return
-        async for r in self.run_novel_job(event, f"user_{q}", lambda: self.collect_user(q, count, "novel")):
+        async for r in self.run_novel_job(event, f"user_{q}", lambda: self.collect_user(q, count, "novel", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_id")
