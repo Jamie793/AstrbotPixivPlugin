@@ -433,7 +433,7 @@ class PixivcCrawlerPlugin(Star):
             "novel_enabled": bool(self.config.get("novel_enabled", True)),
             "novel_send_mode": str(self.config.get("novel_send_mode", "zip") or "zip"),
             "novel_text_max_chars": max(500, int(self.config.get("novel_text_max_chars", 3000) or 3000)),
-            "novel_preview_max_chars": max(100, int(self.config.get("novel_preview_max_chars", 1500) or 1500)),
+            "novel_preview_max_chars": max(50, int(self.config.get("novel_preview_max_chars", 500) or 500)),
             "novel_split_chars": max(500, int(self.config.get("novel_split_chars", 1500) or 1500)),
             "include_novel_cover": bool(self.config.get("include_novel_cover", True)),
             "include_novel_info": bool(self.config.get("include_novel_info", True)),
