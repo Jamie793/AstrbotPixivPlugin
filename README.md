@@ -45,8 +45,9 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 可选配置：
 
 - proxy：Pixiv API 代理地址，例如 http://127.0.0.1:7890
-- use_image_proxy_without_proxy：无代理时使用图片反代下载图片
+- use_image_proxy_without_proxy：无代理时使用图片反代下载图片，可在后台开关切换
 - image_proxy_host：图片反代地址，默认 https://i.pixiv.re
+  开关关闭后，即使没有 proxy 也会直接请求 Pixiv 图片原始地址。
 - image_quality：合并转发预览图片质量，ZIP 固定 original
 - max_count：单次最大返回数量
 - allow_r18_group：群聊是否允许 R18
