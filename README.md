@@ -272,4 +272,4 @@ data/downloads
 
 ## License
 
-MIT
+GPL-3.0-or-later
