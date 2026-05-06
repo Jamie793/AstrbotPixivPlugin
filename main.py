@@ -1075,8 +1075,8 @@ class PixivsCrawlerPlugin(Star):
         return build_pixivs_help_text(self.admin_mark)
 
 
-    @filter.command("pixiv_get_token", alias={"获取P站Token"})
-    async def pixiv_get_token(self, event: AstrMessageEvent):
+    @filter.command("pixivs_get_token", alias={"获取P站Token", "pixiv_get_token"})
+    async def pixivs_get_token(self, event: AstrMessageEvent):
         yield event.plain_result("我正在生成 Pixiv 官方 OAuth 登录链接。")
         try:
             url = await asyncio.to_thread(generate_login_url, OAUTH_STATE_FILE)
