@@ -840,6 +840,7 @@ class PixivcCrawlerPlugin(Star):
     async def build_novel_preview_infos(self, items):
         c = self.cfg()
         infos = []
+        total = max(1, len(items))
         for item in items:
             info = build_novel_info(item, c["include_tags"], c["max_tags_display"], c["include_caption"])
             nid = item_id(item)
@@ -851,8 +852,11 @@ class PixivcCrawlerPlugin(Star):
                     logger.warning(f"pixivc novel preview text failed {nid}: {e}")
                     text = ""
             if text:
-                half_len = max(1, len(text) // 2)
-                preview_len = min(half_len, c["novel_preview_max_chars"])
+                if total == 1:
+                    dynamic_len = len(text)
+                else:
+                    dynamic_len = max(1, len(text) // (total + 1))
+                preview_len = min(dynamic_len, c["novel_preview_max_chars"])
                 preview = text[:preview_len]
                 more = "\n……" if len(text) > preview_len else ""
                 info += f"\n\n正文预览：\n{preview}{more}"
