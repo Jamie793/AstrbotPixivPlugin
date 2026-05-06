@@ -32,7 +32,7 @@
   "image_quality": {
     "description": "合并转发预览图片质量",
     "type": "string",
-    "hint": "仅控制合并转发/预览图片质量。ZIP 固定使用 original 原图；需要 ZIP 时发送 /pixivs_get_zip。",
+    "hint": "仅控制合并转发/预览图片质量。ZIP 固定使用 original 原图；需要 ZIP 时发送 /pixivc_get_zip。",
     "default": "large",
     "options": [
       "medium",
@@ -136,7 +136,7 @@
     "description": "每日自动清空缓存",
     "type": "bool",
     "default": true,
-    "hint": "是否每天自动清空 Pixivs 下载缓存。开启后会清理所有图片、ZIP、临时目录，并重置最近 ZIP 记录。"
+    "hint": "是否每天自动清空 Pixivc 下载缓存。开启后会清理所有图片、ZIP、临时目录，并重置最近 ZIP 记录。"
   },
   "auto_clean_hour": {
     "description": "每日清理小时",
@@ -165,7 +165,7 @@
   "send_mode": {
     "description": "图片作品发送模式",
     "type": "string",
-    "hint": "图片搜索已固定为：搜索后只发送合并转发预览，不自动发送 ZIP；ZIP 会后台生成 original 原图包，发送 /pixivs_get_zip 才发送。此项保留兼容旧配置。",
+    "hint": "图片搜索已固定为：搜索后只发送合并转发预览，不自动发送 ZIP；ZIP 会后台生成 original 原图包，发送 /pixivc_get_zip 才发送。此项保留兼容旧配置。",
     "default": "forward",
     "options": [
       "zip",
@@ -305,54 +305,54 @@
     "description": "推荐作品需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivs_discovery 只有 bot 管理者可用；关闭后普通用户也可用。"
+    "hint": "开启后 /pixivc_discovery 只有 bot 管理者可用；关闭后普通用户也可用。"
   },
   "admin_bookmark": {
     "description": "收藏/取消收藏需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivs_bookmark_add 和 /pixivs_bookmark_del 只有 bot 管理者可用；关闭后普通用户也可操作当前 Pixiv 账号收藏，谨慎关闭。"
+    "hint": "开启后 /pixivc_bookmark_add 和 /pixivc_bookmark_del 只有 bot 管理者可用；关闭后普通用户也可操作当前 Pixiv 账号收藏，谨慎关闭。"
   },
   "admin_bookmarks": {
     "description": "我的收藏列表需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivs_bookmarks 只有 bot 管理者可用；关闭后普通用户也可查看当前 Pixiv 账号收藏。"
+    "hint": "开启后 /pixivc_bookmarks 只有 bot 管理者可用；关闭后普通用户也可查看当前 Pixiv 账号收藏。"
   },
   "admin_follow": {
     "description": "关注/取关作者需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivs_follow_add 和 /pixivs_follow_del 只有 bot 管理者可用；关闭后普通用户也可操作当前 Pixiv 账号关注，谨慎关闭。"
+    "hint": "开启后 /pixivc_follow_add 和 /pixivc_follow_del 只有 bot 管理者可用；关闭后普通用户也可操作当前 Pixiv 账号关注，谨慎关闭。"
   },
   "admin_following": {
     "description": "关注列表需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivs_following 只有 bot 管理者可用；关闭后普通用户也可查看当前 Pixiv 账号关注列表。"
+    "hint": "开启后 /pixivc_following 只有 bot 管理者可用；关闭后普通用户也可查看当前 Pixiv 账号关注列表。"
   },
   "admin_follow_latest": {
     "description": "已关注动态需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivs_follow_latest 只有 bot 管理者可用；关闭后普通用户也可查看关注作者最新作品。"
+    "hint": "开启后 /pixivc_follow_latest 只有 bot 管理者可用；关闭后普通用户也可查看关注作者最新作品。"
   },
   "admin_recommended_users": {
     "description": "推荐作者列表需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivs_recommended_users 只有 bot 管理者可用；关闭后普通用户也可查看推荐作者列表。"
+    "hint": "开启后 /pixivc_recommended_users 只有 bot 管理者可用；关闭后普通用户也可查看推荐作者列表。"
   },
   "admin_clean": {
     "description": "清理缓存需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivs_clean 只有 bot 管理者可用；关闭后普通用户也可清理 Pixivs 缓存。"
+    "hint": "开启后 /pixivc_clean 只有 bot 管理者可用；关闭后普通用户也可清理 Pixivc 缓存。"
   },
   "admin_r18_manage": {
     "description": "R18 白名单管理需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivs_r18_add、/pixivs_r18_del、/pixivs_r18_list 只有 bot 管理者可用；关闭后普通用户也可管理 R18 白名单，不建议关闭。"
+    "hint": "开启后 /pixivc_r18_add、/pixivc_r18_del、/pixivc_r18_list 只有 bot 管理者可用；关闭后普通用户也可管理 R18 白名单，不建议关闭。"
   }
 }

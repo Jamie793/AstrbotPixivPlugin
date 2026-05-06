@@ -18,7 +18,7 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
 from pixivpy3 import AppPixivAPI, ByPassSniApi
 
-from modules.help import build_help_text as build_pixivs_help_text
+from modules.help import build_help_text as build_pixivc_help_text
 from modules.oauth import generate_login_url, exchange_token, token_parts
 
 PLUGIN_DIR = Path(__file__).parent
@@ -29,62 +29,62 @@ LAST_ZIP_FILE = DATA_DIR / "last_zip.json"
 LAST_ITEMS_FILE = DATA_DIR / "last_items.json"
 OAUTH_STATE_FILE = DATA_DIR / "oauth_state.json"
 OWNER_QQ = "10627452"
-HELP_TEXT = """Pixivs 爬虫帮助：
+HELP_TEXT = """Pixivc 爬虫帮助：
 
 图片命令：
-1. /pixivs_key xxx [数量]
-2. /pixivs_tag xxx [数量]
-3. /pixivs_key_and xxx,xxx2 [数量]
-4. /pixivs_key_or xxx,xxx2 [数量]
-5. /pixivs_tag_and xxx,xxx2 [数量]
-6. /pixivs_tag_or xxx,xxx2 [数量]
-7. /pixivs_rank daily [数量]
-8. /pixivs_user 123456 [数量]
-9. /pixivs_discovery [Admin] [数量]
+1. /pixivc_key xxx [数量]
+2. /pixivc_tag xxx [数量]
+3. /pixivc_key_and xxx,xxx2 [数量]
+4. /pixivc_key_or xxx,xxx2 [数量]
+5. /pixivc_tag_and xxx,xxx2 [数量]
+6. /pixivc_tag_or xxx,xxx2 [数量]
+7. /pixivc_rank daily [数量]
+8. /pixivc_user 123456 [数量]
+9. /pixivc_discovery [Admin] [数量]
 
 小说命令：
-10. /pixivs_novel_key xxx [数量]
-11. /pixivs_novel_tag xxx [数量]
-12. /pixivs_novel_key_and xxx,xxx2 [数量]
-13. /pixivs_novel_key_or xxx,xxx2 [数量]
-14. /pixivs_novel_tag_and xxx,xxx2 [数量]
-15. /pixivs_novel_tag_or xxx,xxx2 [数量]
-16. /pixivs_novel_rank daily [数量]
-17. /pixivs_novel_user 123456 [数量]
-18. /pixivs_novel_id 123456789
+10. /pixivc_novel_key xxx [数量]
+11. /pixivc_novel_tag xxx [数量]
+12. /pixivc_novel_key_and xxx,xxx2 [数量]
+13. /pixivc_novel_key_or xxx,xxx2 [数量]
+14. /pixivc_novel_tag_and xxx,xxx2 [数量]
+15. /pixivc_novel_tag_or xxx,xxx2 [数量]
+16. /pixivc_novel_rank daily [数量]
+17. /pixivc_novel_user 123456 [数量]
+18. /pixivc_novel_id 123456789
 
 管理命令：
-19. /pixivs_help
-20. /pixivs_status
-21. /pixivs_clean [Admin]
-22. /pixivs_get_zip
-23. /pixivs_r18_add [Admin] QQ 或 @某人
-24. /pixivs_r18_del [Admin] QQ 或 @某人
-25. /pixivs_r18_list [Admin]
-26. /pixivs_auto xxx
-27. /pixivs_illust_id 作品ID
-28. /pixivs_bookmark_add [Admin] 作品ID
-29. /pixivs_bookmark_del [Admin] 作品ID
-30. /pixivs_bookmarks [Admin] [数量]
-31. /pixivs_trending_tags
-32. /pixivs_related 作品ID [数量]
-33. /pixivs_follow_add [Admin] 用户ID
-34. /pixivs_follow_del [Admin] 用户ID
-35. /pixivs_following [Admin] [数量]
-36. /pixivs_follow_latest [Admin] [数量]
-37. /pixivs_new [数量]
-38. /pixivs_recommended_users [Admin] [数量]
-39. /pixivs_user_search 关键词 [数量]
+19. /pixivc_help
+20. /pixivc_status
+21. /pixivc_clean [Admin]
+22. /pixivc_get_zip
+23. /pixivc_r18_add [Admin] QQ 或 @某人
+24. /pixivc_r18_del [Admin] QQ 或 @某人
+25. /pixivc_r18_list [Admin]
+26. /pixivc_auto xxx
+27. /pixivc_illust_id 作品ID
+28. /pixivc_bookmark_add [Admin] 作品ID
+29. /pixivc_bookmark_del [Admin] 作品ID
+30. /pixivc_bookmarks [Admin] [数量]
+31. /pixivc_trending_tags
+32. /pixivc_related 作品ID [数量]
+33. /pixivc_follow_add [Admin] 用户ID
+34. /pixivc_follow_del [Admin] 用户ID
+35. /pixivc_following [Admin] [数量]
+36. /pixivc_follow_latest [Admin] [数量]
+37. /pixivc_new [数量]
+38. /pixivc_recommended_users [Admin] [数量]
+39. /pixivc_user_search 关键词 [数量]
 
 说明：
 - 默认数量为20；最大数量由 max_count 配置决定。
-- 可用 page 参数指定从第几页开始，例如：/pixivs_tag 原神 20 page=3，或 /pixivs_tag 原神 20 3。
+- 可用 page 参数指定从第几页开始，例如：/pixivc_tag 原神 20 page=3，或 /pixivc_tag 原神 20 3。
 - 预览图片质量 medium/large/original 在插件设置 image_quality 中配置；ZIP 固定 original。
 - 图片搜索默认只发送合并转发预览，不自动发送 ZIP。
-- 如需最近一次搜索的 original ZIP，请发送 /pixivs_get_zip。
+- 如需最近一次搜索的 original ZIP，请发送 /pixivc_get_zip。
 - 发送模式 send_mode/novel_send_mode 在插件设置中配置。
 - R18 需要对应场景开关开启，并且发送者 QQ 在 R18 白名单内。
-- /pixivs_auto xxx 可调用 Pixiv API 获取关键词/标签自动补全。
+- /pixivc_auto xxx 可调用 Pixiv API 获取关键词/标签自动补全。
 """
 
 
@@ -310,12 +310,12 @@ def build_novel_info(item, include_tags=True, max_tags=20, include_caption=True)
     return "\n".join(lines)
 
 @register(
-    "astrbot_plugin_pixivs_crawler",
+    "astrbot_plugin_pixivc_crawler",
     "local",
     "Pixiv 非 Scrapy 批量爬取插件：图片/小说/AND/OR/ZIP/转发，最大20",
     "1.3.0",
 )
-class PixivsCrawlerPlugin(Star):
+class PixivcCrawlerPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
         self.config = config or {}
@@ -330,12 +330,12 @@ class PixivsCrawlerPlugin(Star):
         c = self.cfg()
         if c["auto_clean_enabled"] and (self._clean_task is None or self._clean_task.done()):
             self._clean_task = asyncio.create_task(self.auto_clean_loop())
-            logger.info(f"Pixivs 每日自动清理已启用：{c['auto_clean_hour']:02d}:{c['auto_clean_minute']:02d}")
+            logger.info(f"Pixivc 每日自动清理已启用：{c['auto_clean_hour']:02d}:{c['auto_clean_minute']:02d}")
 
     async def terminate(self):
         if self._clean_task and not self._clean_task.done():
             self._clean_task.cancel()
-            logger.info("Pixivs 每日自动清理任务已停止")
+            logger.info("Pixivc 每日自动清理任务已停止")
 
     def next_clean_time(self):
         c = self.cfg()
@@ -355,14 +355,14 @@ class PixivsCrawlerPlugin(Star):
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.warning(f"Pixivs 每日自动清理失败：{e}", exc_info=True)
+                logger.warning(f"Pixivc 每日自动清理失败：{e}", exc_info=True)
                 await asyncio.sleep(60)
 
     async def clean_download_cache(self, reason="manual"):
         c = self.cfg()
         d = c["download_dir"]
         if self._task_lock.locked():
-            logger.info("Pixivs 清理跳过：当前有爬取任务正在执行")
+            logger.info("Pixivc 清理跳过：当前有爬取任务正在执行")
             return False
         if d.exists():
             shutil.rmtree(d, ignore_errors=True)
@@ -371,7 +371,7 @@ class PixivsCrawlerPlugin(Star):
             LAST_ZIP_FILE.unlink(missing_ok=True)
         except Exception:
             pass
-        logger.info(f"Pixivs 下载缓存已清理，reason={reason}")
+        logger.info(f"Pixivc 下载缓存已清理，reason={reason}")
         return True
 
     def cfg(self):
@@ -473,7 +473,7 @@ class PixivsCrawlerPlugin(Star):
         if not c["refresh_token"]:
             raise RuntimeError("未配置 Pixiv refresh_token，请在本插件设置中填写。")
         async with self._auth_lock:
-            logger.info("Pixivs access token 可能失效，正在后台静默刷新。")
+            logger.info("Pixivc access token 可能失效，正在后台静默刷新。")
             self._api = self.create_api(c["proxy"])
             await asyncio.to_thread(self._api.auth, refresh_token=c["refresh_token"])
             return self._api
@@ -540,7 +540,7 @@ class PixivsCrawlerPlugin(Star):
                 text = (text[:m.start()] + " " + text[m.end():]).strip()
                 break
 
-        # 支持末尾两个数字：关键词 数量 起始页，例如 /pixivs_tag 原神 20 3
+        # 支持末尾两个数字：关键词 数量 起始页，例如 /pixivc_tag 原神 20 3
         parts = text.rsplit(maxsplit=2)
         if page is None and len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
             text = (parts[0] + " " + parts[1]).strip()
@@ -713,7 +713,7 @@ class PixivsCrawlerPlugin(Star):
             resp = await self.api_call("illust_ranking", mode=rank_mode)
         else:
             # pixivpy3 当前没有 novel_ranking，小说榜第一版降级为推荐小说。
-            # 保留 /pixivs_novel_rank 命令入口，后续可替换为 Web API 榜单实现。
+            # 保留 /pixivc_novel_rank 命令入口，后续可替换为 Web API 榜单实现。
             resp = await self.api_call("novel_recommended")
         items = [x for x in extract_items(resp, kind) if self.pass_filter(x, kind)]
         return unique_items(items)[:count]
@@ -770,7 +770,7 @@ class PixivsCrawlerPlugin(Star):
                             await self.download_url(session, url, p, c["proxy"], c["request_timeout"])
                             out.append((p, item, idx, total))
                         except Exception as e:
-                            logger.warning(f"pixivs image download failed {iid} p{idx}: {e}")
+                            logger.warning(f"pixivc image download failed {iid} p{idx}: {e}")
                 return out
 
             results = await asyncio.gather(*(one(x) for x in items), return_exceptions=True)
@@ -801,10 +801,10 @@ class PixivsCrawlerPlugin(Star):
             text = getv(resp, "novel_text", "") or getv(resp, "text", "") or ""
             return str(text)
         except Exception as e:
-            logger.warning(f"pixivs novel text failed {novel_id}: {e}")
+            logger.warning(f"pixivc novel text failed {novel_id}: {e}")
             return ""
 
-    async def prepare_original_zip_from_items(self, items, label="pixivs_original"):
+    async def prepare_original_zip_from_items(self, items, label="pixivc_original"):
         old_quality = self.config.get("image_quality")
         self.config["image_quality"] = "original"
         try:
@@ -815,7 +815,7 @@ class PixivsCrawlerPlugin(Star):
             else:
                 self.config["image_quality"] = old_quality
 
-    async def prepare_novel_files(self, items, label="pixivs_novel"):
+    async def prepare_novel_files(self, items, label="pixivc_novel"):
         c = self.cfg()
         ts = time.strftime("%Y%m%d_%H%M%S")
         base = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}"
@@ -881,13 +881,13 @@ class PixivsCrawlerPlugin(Star):
         nodes = []
         if novel_infos is not None:
             for info in novel_infos:
-                nodes.append(Node(name="PixivsNovel", uin="0", content=[Plain(info)]))
+                nodes.append(Node(name="PixivcNovel", uin="0", content=[Plain(info)]))
         else:
             for p, item, idx, total in saved:
                 content = [Image.fromFileSystem(str(p))]
                 if c["forward_mode"] != "only_images":
                     content.append(Plain(build_illust_info(item, idx, total, c["image_quality"], c["include_tags"], c["max_tags_display"], c["include_caption"])))
-                nodes.append(Node(name="Pixivs", uin="0", content=content))
+                nodes.append(Node(name="Pixivc", uin="0", content=content))
         if nodes:
             yield event.chain_result([Nodes(nodes)])
 
@@ -1003,13 +1003,13 @@ class PixivsCrawlerPlugin(Star):
                         if attempt == 0:
                             yield event.plain_result(f"开始爬取 Pixiv：{label}。")
                         else:
-                            logger.info("Pixivs 已静默刷新 access token，正在自动重试本次图片命令。")
+                            logger.info("Pixivc 已静默刷新 access token，正在自动重试本次图片命令。")
                         items = await collector()
                         if not items:
                             yield event.plain_result("没有找到符合条件的作品，可能是过滤条件过严或关键词无结果。")
                             return
                         self.save_last_items(event, items, label)
-                        base, zip_path, saved = await self.prepare_illust_files(items, "pixivs_preview_" + label)
+                        base, zip_path, saved = await self.prepare_illust_files(items, "pixivc_preview_" + label)
                         if not saved:
                             yield event.plain_result("找到作品但图片下载失败，请检查代理或 Pixiv 访问。")
                             return
@@ -1017,7 +1017,7 @@ class PixivsCrawlerPlugin(Star):
                             zip_path.unlink(missing_ok=True)
                         except Exception:
                             pass
-                        yield event.plain_result(f"下载完成：{len(saved)} 张，正在发送图片合并转发预览。需要 original ZIP 请发送 /pixivs_get_zip")
+                        yield event.plain_result(f"下载完成：{len(saved)} 张，正在发送图片合并转发预览。需要 original ZIP 请发送 /pixivc_get_zip")
                         async for r in self.dispatch_illust_result(event, base, zip_path, saved):
                             yield r
                         return
@@ -1025,7 +1025,7 @@ class PixivsCrawlerPlugin(Star):
                         if attempt == 0 and self._looks_auth_failed(exc=e):
                             await self.refresh_api_silent()
                             continue
-                        logger.error(f"pixivs illust job failed: {e}", exc_info=True)
+                        logger.error(f"pixivc illust job failed: {e}", exc_info=True)
                         yield event.plain_result(f"爬取失败：{e}")
                         return
             finally:
@@ -1048,12 +1048,12 @@ class PixivsCrawlerPlugin(Star):
                         if attempt == 0:
                             yield event.plain_result(f"开始爬取 Pixiv 小说：{label}。")
                         else:
-                            logger.info("Pixivs 已静默刷新 access token，正在自动重试本次小说命令。")
+                            logger.info("Pixivc 已静默刷新 access token，正在自动重试本次小说命令。")
                         items = await collector()
                         if not items:
                             yield event.plain_result("没有找到符合条件的小说，可能是过滤条件过严或关键词无结果。")
                             return
-                        base, zip_path, files, infos = await self.prepare_novel_files(items, "pixivs_novel_" + label)
+                        base, zip_path, files, infos = await self.prepare_novel_files(items, "pixivc_novel_" + label)
                         yield event.plain_result(f"小说处理完成：{len(items)} 篇，正在发送：{zip_path.name}")
                         async for r in self.dispatch_novel_result(event, base, zip_path, files, infos):
                             yield r
@@ -1062,7 +1062,7 @@ class PixivsCrawlerPlugin(Star):
                         if attempt == 0 and self._looks_auth_failed(exc=e):
                             await self.refresh_api_silent()
                             continue
-                        logger.error(f"pixivs novel job failed: {e}", exc_info=True)
+                        logger.error(f"pixivc novel job failed: {e}", exc_info=True)
                         yield event.plain_result(f"小说爬取失败：{e}")
                         return
             finally:
@@ -1072,11 +1072,11 @@ class PixivsCrawlerPlugin(Star):
         return " [Admin]" if self.cfg().get(key, True) else ""
 
     def build_help_text(self) -> str:
-        return build_pixivs_help_text(self.admin_mark)
+        return build_pixivc_help_text(self.admin_mark)
 
 
-    @filter.command("pixivs_get_token", alias={"获取P站Token", "pixiv_get_token"})
-    async def pixivs_get_token(self, event: AstrMessageEvent):
+    @filter.command("pixivc_get_token", alias={"获取P站Token", "pixiv_get_token"})
+    async def pixivc_get_token(self, event: AstrMessageEvent):
         yield event.plain_result("我正在生成 Pixiv 官方 OAuth 登录链接。")
         try:
             url = await asyncio.to_thread(generate_login_url, OAUTH_STATE_FILE)
@@ -1103,8 +1103,8 @@ class PixivsCrawlerPlugin(Star):
             yield event.plain_result(refresh_token)
         event.stop_event()
 
-    @filter.command("pixivs_help", alias={"pixivs帮助"})
-    async def pixivs_help(self, event: AstrMessageEvent):
+    @filter.command("pixivc_help", alias={"pixivs帮助"})
+    async def pixivc_help(self, event: AstrMessageEvent):
         yield event.plain_result(self.build_help_text())
 
     def extract_first_illust(self, resp):
@@ -1134,7 +1134,7 @@ class PixivsCrawlerPlugin(Star):
             account = getv(u, "account", "")
             extra = f" @{account}" if account else ""
             lines.append(f"{i}. {name}{extra} ID：{uid}")
-        return "Pixivs 用户列表：\n" + "\n".join(lines) if lines else "没有找到用户。"
+        return "Pixivc 用户列表：\n" + "\n".join(lines) if lines else "没有找到用户。"
 
     def format_trending_tags(self, resp, limit=30):
         tags = resp.get("trend_tags", []) if isinstance(resp, dict) else []
@@ -1146,7 +1146,7 @@ class PixivsCrawlerPlugin(Star):
                 continue
             suffix = f"（{trans}）" if trans else ""
             lines.append(f"{i}. {tag}{suffix}")
-        return "Pixivs 热门标签：\n" + "\n".join(lines) if lines else "没有找到热门标签。"
+        return "Pixivc 热门标签：\n" + "\n".join(lines) if lines else "没有找到热门标签。"
 
     async def collect_paginated_illust(self, method_name: str, count: int, *args, **kwargs):
         api = await self.api()
@@ -1264,13 +1264,13 @@ class PixivsCrawlerPlugin(Star):
                 extra.append("R18")
             suffix = f"（{'，'.join(extra)}）" if extra else ""
             lines.append(f"{i}. {name}{suffix}")
-        return "Pixivs 自动补全：\n" + "\n".join(lines) if lines else "没有找到自动补全结果。"
+        return "Pixivc 自动补全：\n" + "\n".join(lines) if lines else "没有找到自动补全结果。"
 
-    @filter.command("pixivs_auto")
-    async def pixivs_auto(self, event: AstrMessageEvent, args: str = ""):
-        q = full_command_args(event, "pixivs_auto", args)
+    @filter.command("pixivc_auto")
+    async def pixivc_auto(self, event: AstrMessageEvent, args: str = ""):
+        q = full_command_args(event, "pixivc_auto", args)
         if not q:
-            yield event.plain_result("用法：/pixivs_auto 关键词")
+            yield event.plain_result("用法：/pixivc_auto 关键词")
             return
         for attempt in range(2):
             try:
@@ -1280,17 +1280,17 @@ class PixivsCrawlerPlugin(Star):
             except Exception as e:
                 if attempt == 0 and self._looks_auth_failed(exc=e):
                     await self.refresh_api_silent()
-                    logger.info("Pixivs 已静默刷新 access token，正在自动重试本次自动补全命令。")
+                    logger.info("Pixivc 已静默刷新 access token，正在自动重试本次自动补全命令。")
                     continue
-                logger.error(f"pixivs autocomplete failed: {e}", exc_info=True)
+                logger.error(f"pixivc autocomplete failed: {e}", exc_info=True)
                 yield event.plain_result(f"自动补全失败：{e}")
                 return
 
-    @filter.command("pixivs_illust_id")
-    async def pixivs_illust_id(self, event: AstrMessageEvent, args: str = ""):
-        q = full_command_args(event, "pixivs_illust_id", args)
+    @filter.command("pixivc_illust_id")
+    async def pixivc_illust_id(self, event: AstrMessageEvent, args: str = ""):
+        q = full_command_args(event, "pixivc_illust_id", args)
         if not q.isdigit():
-            yield event.plain_result("用法：/pixivs_illust_id 作品ID")
+            yield event.plain_result("用法：/pixivc_illust_id 作品ID")
             return
         async for r in self.run_illust_job(event, f"illust_{q}", lambda: self._collect_illust_detail(q)):
             yield r
@@ -1302,36 +1302,36 @@ class PixivsCrawlerPlugin(Star):
             return []
         return [item]
 
-    @filter.command("pixivs_bookmark_add")
-    async def pixivs_bookmark_add(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_bookmark_add")
+    async def pixivc_bookmark_add(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_bookmark"):
             yield event.plain_result(self.admin_denied_text())
             return
-        q = full_command_args(event, "pixivs_bookmark_add", args)
+        q = full_command_args(event, "pixivc_bookmark_add", args)
         if not q.isdigit():
-            yield event.plain_result("用法：/pixivs_bookmark_add 作品ID")
+            yield event.plain_result("用法：/pixivc_bookmark_add 作品ID")
             return
         await self.api_call("illust_bookmark_add", int(q), restrict="public")
         yield event.plain_result("已收藏作品。")
 
-    @filter.command("pixivs_bookmark_del")
-    async def pixivs_bookmark_del(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_bookmark_del")
+    async def pixivc_bookmark_del(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_bookmark"):
             yield event.plain_result(self.admin_denied_text())
             return
-        q = full_command_args(event, "pixivs_bookmark_del", args)
+        q = full_command_args(event, "pixivc_bookmark_del", args)
         if not q.isdigit():
-            yield event.plain_result("用法：/pixivs_bookmark_del 作品ID")
+            yield event.plain_result("用法：/pixivc_bookmark_del 作品ID")
             return
         await self.api_call("illust_bookmark_delete", int(q))
         yield event.plain_result("已取消收藏作品。")
 
-    @filter.command("pixivs_bookmarks")
-    async def pixivs_bookmarks(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_bookmarks")
+    async def pixivc_bookmarks(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_bookmarks"):
             yield event.plain_result(self.admin_denied_text())
             return
-        _, count = self.parse_query_count(full_command_args(event, "pixivs_bookmarks", args))
+        _, count = self.parse_query_count(full_command_args(event, "pixivc_bookmarks", args))
         async for r in self.run_illust_job(event, "my_bookmarks", lambda: self._collect_my_bookmarks(count)):
             yield r
 
@@ -1354,91 +1354,91 @@ class PixivsCrawlerPlugin(Star):
             raise RuntimeError("无法获取当前 Pixiv 用户ID，请检查 refresh_token。")
         return await self.collect_paginated_users("user_following", count, uid)
 
-    @filter.command("pixivs_trending_tags")
-    async def pixivs_trending_tags(self, event: AstrMessageEvent):
+    @filter.command("pixivc_trending_tags")
+    async def pixivc_trending_tags(self, event: AstrMessageEvent):
         resp = await self.api_call("trending_tags_illust")
         yield event.plain_result(self.format_trending_tags(resp, 30))
 
-    @filter.command("pixivs_related")
-    async def pixivs_related(self, event: AstrMessageEvent, args: str = ""):
-        q, count = self.parse_query_count(full_command_args(event, "pixivs_related", args))
+    @filter.command("pixivc_related")
+    async def pixivc_related(self, event: AstrMessageEvent, args: str = ""):
+        q, count = self.parse_query_count(full_command_args(event, "pixivc_related", args))
         if not q.isdigit():
-            yield event.plain_result("用法：/pixivs_related 作品ID [数量]")
+            yield event.plain_result("用法：/pixivc_related 作品ID [数量]")
             return
         async for r in self.run_illust_job(event, f"related_{q}", lambda: self.collect_paginated_illust("illust_related", count, int(q))):
             yield r
 
-    @filter.command("pixivs_follow_add")
-    async def pixivs_follow_add(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_follow_add")
+    async def pixivc_follow_add(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_follow"):
             yield event.plain_result(self.admin_denied_text())
             return
-        q = full_command_args(event, "pixivs_follow_add", args)
+        q = full_command_args(event, "pixivc_follow_add", args)
         if not q.isdigit():
-            yield event.plain_result("用法：/pixivs_follow_add 用户ID")
+            yield event.plain_result("用法：/pixivc_follow_add 用户ID")
             return
         await self.api_call("user_follow_add", int(q), restrict="public")
         yield event.plain_result("已关注作者。")
 
-    @filter.command("pixivs_follow_del")
-    async def pixivs_follow_del(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_follow_del")
+    async def pixivc_follow_del(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_follow"):
             yield event.plain_result(self.admin_denied_text())
             return
-        q = full_command_args(event, "pixivs_follow_del", args)
+        q = full_command_args(event, "pixivc_follow_del", args)
         if not q.isdigit():
-            yield event.plain_result("用法：/pixivs_follow_del 用户ID")
+            yield event.plain_result("用法：/pixivc_follow_del 用户ID")
             return
         await self.api_call("user_follow_delete", int(q))
         yield event.plain_result("已取消关注作者。")
 
-    @filter.command("pixivs_following")
-    async def pixivs_following(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_following")
+    async def pixivc_following(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_following"):
             yield event.plain_result(self.admin_denied_text())
             return
-        _, count = self.parse_query_count(full_command_args(event, "pixivs_following", args))
+        _, count = self.parse_query_count(full_command_args(event, "pixivc_following", args))
         users = await self._collect_my_following(count)
         yield event.plain_result(self.format_users(users, count))
 
-    @filter.command("pixivs_follow_latest")
-    async def pixivs_follow_latest(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_follow_latest")
+    async def pixivc_follow_latest(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_follow_latest"):
             yield event.plain_result(self.admin_denied_text())
             return
-        _, count = self.parse_query_count(full_command_args(event, "pixivs_follow_latest", args))
+        _, count = self.parse_query_count(full_command_args(event, "pixivc_follow_latest", args))
         async for r in self.run_illust_job(event, "follow_latest", lambda: self.collect_paginated_illust("illust_follow", count, restrict="public")):
             yield r
 
-    @filter.command("pixivs_new")
-    async def pixivs_new(self, event: AstrMessageEvent, args: str = ""):
-        _, count = self.parse_query_count(full_command_args(event, "pixivs_new", args))
+    @filter.command("pixivc_new")
+    async def pixivc_new(self, event: AstrMessageEvent, args: str = ""):
+        _, count = self.parse_query_count(full_command_args(event, "pixivc_new", args))
         async for r in self.run_illust_job(event, "new", lambda: self.collect_paginated_illust("illust_new", count, content_type="illust")):
             yield r
 
-    @filter.command("pixivs_recommended_users")
-    async def pixivs_recommended_users(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_recommended_users")
+    async def pixivc_recommended_users(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_recommended_users"):
             yield event.plain_result(self.admin_denied_text())
             return
-        _, count = self.parse_query_count(full_command_args(event, "pixivs_recommended_users", args))
+        _, count = self.parse_query_count(full_command_args(event, "pixivc_recommended_users", args))
         users = await self.collect_paginated_users("user_recommended", count)
         yield event.plain_result(self.format_users(users, count))
 
-    @filter.command("pixivs_user_search")
-    async def pixivs_user_search(self, event: AstrMessageEvent, args: str = ""):
-        q, count = self.parse_query_count(full_command_args(event, "pixivs_user_search", args))
+    @filter.command("pixivc_user_search")
+    async def pixivc_user_search(self, event: AstrMessageEvent, args: str = ""):
+        q, count = self.parse_query_count(full_command_args(event, "pixivc_user_search", args))
         if not q:
-            yield event.plain_result("用法：/pixivs_user_search 关键词 [数量]")
+            yield event.plain_result("用法：/pixivc_user_search 关键词 [数量]")
             return
         users = await self.collect_paginated_users("search_user", count, q)
         yield event.plain_result(self.format_users(users, count))
 
-    @filter.command("pixivs_status")
-    async def pixivs_status(self, event: AstrMessageEvent):
+    @filter.command("pixivc_status")
+    async def pixivc_status(self, event: AstrMessageEvent):
         c = self.cfg()
         yield event.plain_result(
-            "Pixivs 状态：\n"
+            "Pixivc 状态：\n"
             f"refresh_token：{'已设置' if c['refresh_token'] else '未设置'}\n"
             f"proxy：{c['proxy'] or '未设置'}\n"
             f"default_count：{c['default_count']}\n"
@@ -1459,8 +1459,8 @@ class PixivsCrawlerPlugin(Star):
             f"任务中：{self._task_lock.locked()}"
         )
 
-    @filter.command("pixivs_get_zip")
-    async def pixivs_get_zip(self, event: AstrMessageEvent):
+    @filter.command("pixivc_get_zip")
+    async def pixivc_get_zip(self, event: AstrMessageEvent):
         data = self.load_last_zip()
         if data:
             path = Path(data["path"])
@@ -1469,7 +1469,7 @@ class PixivsCrawlerPlugin(Star):
             return
         item_data = self.load_last_items()
         if not item_data:
-            yield event.plain_result("没有可打包的 Pixivs 搜索结果，请先执行一次图片搜索。")
+            yield event.plain_result("没有可打包的 Pixivc 搜索结果，请先执行一次图片搜索。")
             return
         items = item_data.get("items") or []
         label = item_data.get("label") or "last"
@@ -1479,7 +1479,7 @@ class PixivsCrawlerPlugin(Star):
         async with self._task_lock:
             try:
                 yield event.plain_result("正在下载 original 并打包 ZIP，请稍等。")
-                base, zip_path, saved = await self.prepare_original_zip_from_items(items, "pixivs_original_" + str(label))
+                base, zip_path, saved = await self.prepare_original_zip_from_items(items, "pixivc_original_" + str(label))
                 if not saved:
                     yield event.plain_result("original 下载失败，请检查代理或 Pixiv 访问。")
                     return
@@ -1488,239 +1488,239 @@ class PixivsCrawlerPlugin(Star):
                     yield r
                 shutil.rmtree(base, ignore_errors=True)
             except Exception as e:
-                logger.error(f"pixivs get zip failed: {e}", exc_info=True)
+                logger.error(f"pixivc get zip failed: {e}", exc_info=True)
                 yield event.plain_result(f"ZIP 打包失败：{e}")
 
-    @filter.command("pixivs_r18_add")
-    async def pixivs_r18_add(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_r18_add")
+    async def pixivc_r18_add(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_r18_manage"):
             yield event.plain_result(self.admin_denied_text())
             return
-        qq = self.extract_qq_arg(event, "pixivs_r18_add", args)
+        qq = self.extract_qq_arg(event, "pixivc_r18_add", args)
         if not qq:
-            yield event.plain_result("用法：/pixivs_r18_add QQ 或 @某人")
+            yield event.plain_result("用法：/pixivc_r18_add QQ 或 @某人")
             return
         data = self.load_r18_whitelist()
         if qq not in data:
             data.append(qq)
         self.save_r18_whitelist(data)
-        yield event.plain_result(f"已加入 Pixivs R18 白名单：{qq}")
+        yield event.plain_result(f"已加入 Pixivc R18 白名单：{qq}")
 
-    @filter.command("pixivs_r18_del")
-    async def pixivs_r18_del(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_r18_del")
+    async def pixivc_r18_del(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_r18_manage"):
             yield event.plain_result(self.admin_denied_text())
             return
-        qq = self.extract_qq_arg(event, "pixivs_r18_del", args)
+        qq = self.extract_qq_arg(event, "pixivc_r18_del", args)
         if not qq:
-            yield event.plain_result("用法：/pixivs_r18_del QQ 或 @某人")
+            yield event.plain_result("用法：/pixivc_r18_del QQ 或 @某人")
             return
         data = [x for x in self.load_r18_whitelist() if x != qq]
         self.save_r18_whitelist(data)
-        yield event.plain_result(f"已移出 Pixivs R18 白名单：{qq}")
+        yield event.plain_result(f"已移出 Pixivc R18 白名单：{qq}")
 
-    @filter.command("pixivs_r18_list")
-    async def pixivs_r18_list(self, event: AstrMessageEvent):
+    @filter.command("pixivc_r18_list")
+    async def pixivc_r18_list(self, event: AstrMessageEvent):
         if not self.require_admin_feature(event, "admin_r18_manage"):
             yield event.plain_result(self.admin_denied_text())
             return
         data = self.load_r18_whitelist()
         if not data:
-            yield event.plain_result("Pixivs R18 白名单：空")
+            yield event.plain_result("Pixivc R18 白名单：空")
         else:
-            yield event.plain_result("Pixivs R18 白名单：\n" + "\n".join(data))
+            yield event.plain_result("Pixivc R18 白名单：\n" + "\n".join(data))
 
-    @filter.command("pixivs_clean")
-    async def pixivs_clean(self, event: AstrMessageEvent):
+    @filter.command("pixivc_clean")
+    async def pixivc_clean(self, event: AstrMessageEvent):
         if not self.require_admin_feature(event, "admin_clean"):
             yield event.plain_result(self.admin_denied_text())
             return
         ok = await self.clean_download_cache(reason="manual_command")
         if ok:
-            yield event.plain_result("Pixivs 下载缓存已清理。")
+            yield event.plain_result("Pixivc 下载缓存已清理。")
         else:
             yield event.plain_result("当前有 Pixiv 爬取任务正在执行，已跳过清理。")
 
-    @filter.command("pixivs_key")
-    async def pixivs_key(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_key", args)
+    @filter.command("pixivc_key")
+    async def pixivc_key(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_key", args)
         q, count = self.parse_query_count(args)
         if not q:
-            yield event.plain_result("用法：/pixivs_key 关键词 [数量]")
+            yield event.plain_result("用法：/pixivc_key 关键词 [数量]")
             return
         async for r in self.run_illust_job(event, f"key_{q}", lambda: self.collect_and_or([q], count, "illust", "key", "single")):
             yield r
 
-    @filter.command("pixivs_tag")
-    async def pixivs_tag(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_tag", args)
+    @filter.command("pixivc_tag")
+    async def pixivc_tag(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_tag", args)
         q, count = self.parse_query_count(args)
         if not q:
-            yield event.plain_result("用法：/pixivs_tag 标签 [数量]")
+            yield event.plain_result("用法：/pixivc_tag 标签 [数量]")
             return
         async for r in self.run_illust_job(event, f"tag_{q}", lambda: self.collect_and_or([q], count, "illust", "tag", "single")):
             yield r
 
-    @filter.command("pixivs_key_and")
-    async def pixivs_key_and(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_key_and", args)
+    @filter.command("pixivc_key_and")
+    async def pixivc_key_and(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_key_and", args)
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivs_key_and 关键词1,关键词2 [数量]")
+            yield event.plain_result("用法：/pixivc_key_and 关键词1,关键词2 [数量]")
             return
         async for r in self.run_illust_job(event, f"key_and_{q}", lambda: self.collect_and_or(terms, count, "illust", "key", "and")):
             yield r
 
-    @filter.command("pixivs_key_or")
-    async def pixivs_key_or(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_key_or", args)
+    @filter.command("pixivc_key_or")
+    async def pixivc_key_or(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_key_or", args)
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivs_key_or 关键词1,关键词2 [数量]")
+            yield event.plain_result("用法：/pixivc_key_or 关键词1,关键词2 [数量]")
             return
         async for r in self.run_illust_job(event, f"key_or_{q}", lambda: self.collect_and_or(terms, count, "illust", "key", "or")):
             yield r
 
-    @filter.command("pixivs_tag_and")
-    async def pixivs_tag_and(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_tag_and", args)
+    @filter.command("pixivc_tag_and")
+    async def pixivc_tag_and(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_tag_and", args)
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivs_tag_and 标签1,标签2 [数量]")
+            yield event.plain_result("用法：/pixivc_tag_and 标签1,标签2 [数量]")
             return
         async for r in self.run_illust_job(event, f"tag_and_{q}", lambda: self.collect_and_or(terms, count, "illust", "tag", "and")):
             yield r
 
-    @filter.command("pixivs_tag_or")
-    async def pixivs_tag_or(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_tag_or", args)
+    @filter.command("pixivc_tag_or")
+    async def pixivc_tag_or(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_tag_or", args)
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivs_tag_or 标签1,标签2 [数量]")
+            yield event.plain_result("用法：/pixivc_tag_or 标签1,标签2 [数量]")
             return
         async for r in self.run_illust_job(event, f"tag_or_{q}", lambda: self.collect_and_or(terms, count, "illust", "tag", "or")):
             yield r
 
-    @filter.command("pixivs_rank")
-    async def pixivs_rank(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_rank", args)
+    @filter.command("pixivc_rank")
+    async def pixivc_rank(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_rank", args)
         q, count = self.parse_query_count(args or "daily")
         rank_mode = q or "daily"
         async for r in self.run_illust_job(event, f"rank_{rank_mode}", lambda: self.collect_rank(rank_mode, count, "illust")):
             yield r
 
-    @filter.command("pixivs_user")
-    async def pixivs_user(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_user", args)
+    @filter.command("pixivc_user")
+    async def pixivc_user(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_user", args)
         q, count = self.parse_query_count(args)
         if not q:
-            yield event.plain_result("用法：/pixivs_user 用户ID [数量]")
+            yield event.plain_result("用法：/pixivc_user 用户ID [数量]")
             return
         async for r in self.run_illust_job(event, f"user_{q}", lambda: self.collect_user(q, count, "illust")):
             yield r
 
-    @filter.command("pixivs_discovery")
-    async def pixivs_discovery(self, event: AstrMessageEvent, args: str = ""):
+    @filter.command("pixivc_discovery")
+    async def pixivc_discovery(self, event: AstrMessageEvent, args: str = ""):
         if not self.require_admin_feature(event, "admin_discovery"):
             yield event.plain_result(self.admin_denied_text())
             return
-        args = full_command_args(event, "pixivs_discovery", args)
+        args = full_command_args(event, "pixivc_discovery", args)
         _, count = self.parse_query_count(args)
         async for r in self.run_illust_job(event, "discovery", lambda: self.collect_discovery(count)):
             yield r
 
-    @filter.command("pixivs_novel_key")
-    async def pixivs_novel_key(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_novel_key", args)
+    @filter.command("pixivc_novel_key")
+    async def pixivc_novel_key(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_novel_key", args)
         q, count = self.parse_query_count(args)
         if not q:
-            yield event.plain_result("用法：/pixivs_novel_key 关键词 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_key 关键词 [数量]")
             return
         async for r in self.run_novel_job(event, f"key_{q}", lambda: self.collect_and_or([q], count, "novel", "key", "single")):
             yield r
 
-    @filter.command("pixivs_novel_tag")
-    async def pixivs_novel_tag(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_novel_tag", args)
+    @filter.command("pixivc_novel_tag")
+    async def pixivc_novel_tag(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_novel_tag", args)
         q, count = self.parse_query_count(args)
         if not q:
-            yield event.plain_result("用法：/pixivs_novel_tag 标签 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_tag 标签 [数量]")
             return
         async for r in self.run_novel_job(event, f"tag_{q}", lambda: self.collect_and_or([q], count, "novel", "tag", "single")):
             yield r
 
-    @filter.command("pixivs_novel_key_and")
-    async def pixivs_novel_key_and(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_novel_key_and", args)
+    @filter.command("pixivc_novel_key_and")
+    async def pixivc_novel_key_and(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_novel_key_and", args)
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivs_novel_key_and 关键词1,关键词2 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_key_and 关键词1,关键词2 [数量]")
             return
         async for r in self.run_novel_job(event, f"key_and_{q}", lambda: self.collect_and_or(terms, count, "novel", "key", "and")):
             yield r
 
-    @filter.command("pixivs_novel_key_or")
-    async def pixivs_novel_key_or(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_novel_key_or", args)
+    @filter.command("pixivc_novel_key_or")
+    async def pixivc_novel_key_or(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_novel_key_or", args)
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivs_novel_key_or 关键词1,关键词2 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_key_or 关键词1,关键词2 [数量]")
             return
         async for r in self.run_novel_job(event, f"key_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "key", "or")):
             yield r
 
-    @filter.command("pixivs_novel_tag_and")
-    async def pixivs_novel_tag_and(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_novel_tag_and", args)
+    @filter.command("pixivc_novel_tag_and")
+    async def pixivc_novel_tag_and(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_novel_tag_and", args)
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivs_novel_tag_and 标签1,标签2 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_tag_and 标签1,标签2 [数量]")
             return
         async for r in self.run_novel_job(event, f"tag_and_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "and")):
             yield r
 
-    @filter.command("pixivs_novel_tag_or")
-    async def pixivs_novel_tag_or(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_novel_tag_or", args)
+    @filter.command("pixivc_novel_tag_or")
+    async def pixivc_novel_tag_or(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_novel_tag_or", args)
         q, count = self.parse_query_count(args)
         terms = split_terms(q)
         if not terms:
-            yield event.plain_result("用法：/pixivs_novel_tag_or 标签1,标签2 [数量]")
+            yield event.plain_result("用法：/pixivc_novel_tag_or 标签1,标签2 [数量]")
             return
         async for r in self.run_novel_job(event, f"tag_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "or")):
             yield r
 
-    @filter.command("pixivs_novel_rank")
-    async def pixivs_novel_rank(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_novel_rank", args)
+    @filter.command("pixivc_novel_rank")
+    async def pixivc_novel_rank(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_novel_rank", args)
         q, count = self.parse_query_count(args or "daily")
         rank_mode = q or "daily"
         async for r in self.run_novel_job(event, f"rank_{rank_mode}", lambda: self.collect_rank(rank_mode, count, "novel")):
             yield r
 
-    @filter.command("pixivs_novel_user")
-    async def pixivs_novel_user(self, event: AstrMessageEvent, args: str = ""):
-        args = full_command_args(event, "pixivs_novel_user", args)
+    @filter.command("pixivc_novel_user")
+    async def pixivc_novel_user(self, event: AstrMessageEvent, args: str = ""):
+        args = full_command_args(event, "pixivc_novel_user", args)
         q, count = self.parse_query_count(args)
         if not q:
-            yield event.plain_result("用法：/pixivs_novel_user 用户ID [数量]")
+            yield event.plain_result("用法：/pixivc_novel_user 用户ID [数量]")
             return
         async for r in self.run_novel_job(event, f"user_{q}", lambda: self.collect_user(q, count, "novel")):
             yield r
 
-    @filter.command("pixivs_novel_id")
-    async def pixivs_novel_id(self, event: AstrMessageEvent, novel_id: str = ""):
-        novel_id = full_command_args(event, "pixivs_novel_id", novel_id)
+    @filter.command("pixivc_novel_id")
+    async def pixivc_novel_id(self, event: AstrMessageEvent, novel_id: str = ""):
+        novel_id = full_command_args(event, "pixivc_novel_id", novel_id)
         novel_id = str(novel_id or "").strip()
         if not novel_id.isdigit():
-            yield event.plain_result("用法：/pixivs_novel_id 小说ID")
+            yield event.plain_result("用法：/pixivc_novel_id 小说ID")
             return
         async def collector():
             api = await self.api()
