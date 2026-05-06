@@ -165,14 +165,16 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 
 图片搜索后默认只发送合并转发预览，不会立刻下载 original 原图，也不会自动发送 ZIP。
 
-如果需要 original ZIP，发送：
+小说搜索默认也只发送合并转发预览，不会自动发送 ZIP。
+
+如果需要 ZIP，发送：
 
 /pixivc_get_zip
 
-插件会根据最近一次图片搜索结果：
+插件会根据最近一次任务类型自动判断：
 
-1. 下载 original 原图
-2. 打包为 ZIP
+1. 上一次是图片搜索：下载 original 原图并打包为图片 ZIP
+2. 上一次是小说搜索：打包小说 TXT/封面为小说 ZIP
 3. 直接作为聊天文件发送
 
 如果同一批结果已经生成过 ZIP，再次执行 /pixivc_get_zip 会直接发送已有 ZIP。

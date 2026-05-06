@@ -922,8 +922,9 @@ class PixivcCrawlerPlugin(Star):
             pass
         return item
 
-    def save_last_items(self, event: AstrMessageEvent, items, label: str):
+    def save_last_items(self, event: AstrMessageEvent, items, label: str, kind: str = "illust"):
         data = {
+            "kind": str(kind),
             "label": str(label),
             "time": time.strftime("%Y-%m-%d %H:%M:%S"),
             "sender_id": self.sender_id(event),
@@ -949,8 +950,9 @@ class PixivcCrawlerPlugin(Star):
             return {}
         return data
 
-    def save_last_zip(self, event: AstrMessageEvent, zip_path: Path, label: str, count: int):
+    def save_last_zip(self, event: AstrMessageEvent, zip_path: Path, label: str, count: int, kind: str = "illust"):
         data = {
+            "kind": str(kind),
             "path": str(zip_path),
             "name": zip_path.name,
             "label": str(label),
@@ -1029,7 +1031,7 @@ class PixivcCrawlerPlugin(Star):
                         if not items:
                             yield event.plain_result("没有找到符合条件的作品，可能是过滤条件过严或关键词无结果。")
                             return
-                        self.save_last_items(event, items, label)
+                        self.save_last_items(event, items, label, "illust")
                         base, zip_path, saved = await self.prepare_illust_files(items, "pixivc_preview_" + label)
                         if not saved:
                             yield event.plain_result("找到作品但图片下载失败，请检查代理或 Pixiv 访问。")
@@ -1074,9 +1076,10 @@ class PixivcCrawlerPlugin(Star):
                         if not items:
                             yield event.plain_result("没有找到符合条件的小说，可能是过滤条件过严或关键词无结果。")
                             return
-                        base, zip_path, files, infos = await self.prepare_novel_files(items, "pixivc_novel_" + label)
-                        yield event.plain_result(f"小说处理完成：{len(items)} 篇，正在发送：{zip_path.name}")
-                        async for r in self.dispatch_novel_result(event, base, zip_path, files, infos):
+                        self.save_last_items(event, items, label, "novel")
+                        infos = [build_novel_info(x, c["include_tags"], c["max_tags_display"], c["include_caption"]) for x in items]
+                        yield event.plain_result(f"小说处理完成：{len(items)} 篇，正在发送合并转发预览。需要小说 ZIP 请发送 /pixivc_get_zip")
+                        async for r in self.send_forward(event, [], novel_infos=infos if c["include_novel_info"] else ["小说信息已按配置隐藏"]):
                             yield r
                         return
                     except Exception as e:
@@ -1510,33 +1513,44 @@ class PixivcCrawlerPlugin(Star):
         )
 
     @filter.command("pixivc_get_zip")
-    async def pixivc_get_zip(self, event: AstrMessageEvent):
+    async def pixivc_get_zip(self, event: AstrMessageEvent, args: str = ""):
         data = self.load_last_zip()
-        if data:
+        item_data = self.load_last_items()
+        last_kind = (item_data.get("kind") or data.get("kind") or "illust") if (item_data or data) else "illust"
+        # 已有 ZIP 且类型匹配时直接发送
+        if data and (not item_data or data.get("kind", last_kind) == last_kind):
             path = Path(data["path"])
             async for r in self.send_zip(event, path):
                 yield r
             return
-        item_data = self.load_last_items()
         if not item_data:
-            yield event.plain_result("没有可打包的 Pixivc 搜索结果，请先执行一次图片搜索。")
+            yield event.plain_result("没有可打包的 Pixivc 结果，请先执行一次图片或小说搜索。")
             return
         items = item_data.get("items") or []
         label = item_data.get("label") or "last"
+        kind = item_data.get("kind") or "illust"
         if self._task_lock.locked():
             yield event.plain_result("已有 Pixiv 爬取任务正在执行，请稍后再试。")
             return
         async with self._task_lock:
             try:
-                yield event.plain_result("正在下载 original 并打包 ZIP，请稍等。")
-                base, zip_path, saved = await self.prepare_original_zip_from_items(items, "pixivc_original_" + str(label))
-                if not saved:
-                    yield event.plain_result("original 下载失败，请检查代理或 Pixiv 访问。")
-                    return
-                self.save_last_zip(event, zip_path, label, len(saved))
-                async for r in self.send_zip(event, zip_path):
-                    yield r
-                shutil.rmtree(base, ignore_errors=True)
+                if kind == "novel":
+                    yield event.plain_result("正在打包小说 ZIP，请稍等。")
+                    base, zip_path, files, infos = await self.prepare_novel_files(items, "pixivc_novel_" + str(label))
+                    self.save_last_zip(event, zip_path, label, len(items), kind="novel")
+                    async for r in self.send_zip(event, zip_path):
+                        yield r
+                    shutil.rmtree(base, ignore_errors=True)
+                else:
+                    yield event.plain_result("正在下载 original 并打包图片 ZIP，请稍等。")
+                    base, zip_path, saved = await self.prepare_original_zip_from_items(items, "pixivc_original_" + str(label))
+                    if not saved:
+                        yield event.plain_result("original 下载失败，请检查代理或 Pixiv 访问。")
+                        return
+                    self.save_last_zip(event, zip_path, label, len(saved), kind="illust")
+                    async for r in self.send_zip(event, zip_path):
+                        yield r
+                    shutil.rmtree(base, ignore_errors=True)
             except Exception as e:
                 logger.error(f"pixivc get zip failed: {e}", exc_info=True)
                 yield event.plain_result(f"ZIP 打包失败：{e}")
