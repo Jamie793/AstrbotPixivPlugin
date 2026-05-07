@@ -91,8 +91,9 @@ HELP_TEXT = """Pixivc 爬虫帮助：
 - n x 表示作品数量为 x，例如 n5 表示 5 个作品；默认 n20，最大值由 max_count 配置决定。数量按作品统计，不按图片页数统计。
 - p x 表示从 Pixiv 结果第 x 页开始，例如 p3 表示从第 3 页开始；不是作品图片页。
 - m x 表示本次命令最大搜索深度为 x，例如 m30 表示最多搜索 30 页；不写则使用插件配置 search_max_depth。
-- t x 表示按作品/小说标签筛选，例如 t女の子,初音ミク；只匹配作品/小说 tags 里的单个标签，不匹配标题、简介、作者或关键词。多个标签按 AND 处理，结果需同时包含这些标签。标签为全字精确匹配，t空 只匹配标签“空”，不会匹配“天空”。
-- 示例：/pixivc_discovery n5 p3 m30 t女の子,初音ミク
+- t x 表示按作品/小说标签筛选，例如 t女の子,初音ミク；只匹配作品/小说 tags 里的单个标签，不匹配标题、简介、作者或关键词。多个正向标签按 AND 处理，结果需同时包含这些标签。标签为全字精确匹配，t空 只匹配标签“空”，不会匹配“天空”。
+- t -x 表示排除标签 x，例如 t原神,-空 表示必须包含“原神”且不能包含“空”。排除标签同样是单标签全字精确匹配。
+- 示例：/pixivc_discovery n5 p3 m30 t女の子,初音ミク,-AI生成
 - 示例：/pixivc_tag 原神 n20 p3 m30
 - /pixivc_tag 本身就是标签搜索，会按作品 tags 做单标签精确过滤。
 - 作品数量不够时会继续翻页补足，直到够数、没有下一页或达到 search_max_depth。
@@ -642,13 +643,31 @@ class PixivcCrawlerPlugin(Star):
         q, count = self.parse_query_count(text)
         return q, count, tags
 
+    def split_include_exclude_tags(self, tag_terms):
+        include = []
+        exclude = []
+        for x in (tag_terms or []):
+            text = str(x).strip()
+            if not text:
+                continue
+            if text.startswith("-") and len(text) > 1:
+                exclude.append(text[1:].strip())
+            else:
+                include.append(text)
+        return include, exclude
+
     def match_tag_filter(self, item, tag_terms) -> bool:
-        terms = [str(x).strip().lower() for x in (tag_terms or []) if str(x).strip()]
-        if not terms:
+        include_raw, exclude_raw = self.split_include_exclude_tags(tag_terms)
+        include = [str(x).strip().lower() for x in include_raw if str(x).strip()]
+        exclude = [str(x).strip().lower() for x in exclude_raw if str(x).strip()]
+        if not include and not exclude:
             return True
         tags = [str(x).strip().lower() for x in tags_text(item) if str(x).strip()]
-        for term in terms:
+        for term in include:
             if term not in tags:
+                return False
+        for term in exclude:
+            if term in tags:
                 return False
         return True
 
@@ -779,6 +798,8 @@ class PixivcCrawlerPlugin(Star):
                     return True
                 continue
             text = str(value or "")
+            if text.strip().startswith("-"):
+                continue
             candidates = []
             candidates.append(text)
             candidates.extend(split_terms(text))
