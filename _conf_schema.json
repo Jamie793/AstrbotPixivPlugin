@@ -52,6 +52,18 @@
       "original"
     ]
   },
+  "encrypt_zip_enabled": {
+    "description": "ZIP 文件加密发送",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后，插件打包生成的 ZIP 会使用随机强密码 AES 加密，并在发送时提示解压密码。密码包含大小写字母、数字和符号。用于降低文件被他人直接窥视的风险。"
+  },
+  "show_pack_progress": {
+    "description": "显示打包进度日志",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 /pixivc_get_zip 打包 ZIP 时会输出正在打包的作品/小说 ID 和百分比进度；关闭后只输出 ZIP 生成和发送结果。"
+  },
   "allow_r18_group": {
     "description": "群聊是否允许 R18",
     "type": "bool",

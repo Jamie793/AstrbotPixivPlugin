@@ -28,8 +28,9 @@ def build_help_text(admin_mark):
 管理命令：
 20. /pixivc_help
 21. /pixivc_status
-22. /pixivc_clean{ad('admin_clean')}
-23. /pixivc_get_zip
+22. /pixivc_cache
+23. /pixivc_clean{ad('admin_clean')}
+24. /pixivc_get_zip
 24. /pixivc_r18_add{ad('admin_r18_manage')} QQ 或 @某人
 25. /pixivc_r18_del{ad('admin_r18_manage')} QQ 或 @某人
 26. /pixivc_r18_list{ad('admin_r18_manage')}

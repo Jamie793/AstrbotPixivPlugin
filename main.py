@@ -4,9 +4,15 @@ import html
 import json
 import os
 import re
+import secrets
+import string
 import shutil
 import time
 import zipfile
+try:
+    import pyzipper
+except Exception:
+    pyzipper = None
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable
@@ -385,6 +391,65 @@ class PixivcCrawlerPlugin(Star):
             pass
         logger.info(f"Pixivc 下载缓存已清理，reason={reason}")
         return True
+
+    def format_size(self, size: int) -> str:
+        size = max(0, int(size or 0))
+        units = ["B", "KB", "MB", "GB", "TB"]
+        value = float(size)
+        for unit in units:
+            if value < 1024 or unit == units[-1]:
+                if unit == "B":
+                    return f"{int(value)}{unit}"
+                return f"{value:.1f}{unit}"
+            value /= 1024
+        return f"{size}B"
+
+    def path_total_size(self, path: Path) -> int:
+        try:
+            if path.is_file():
+                return path.stat().st_size
+            total = 0
+            for x in path.rglob("*"):
+                try:
+                    if x.is_file():
+                        total += x.stat().st_size
+                except Exception:
+                    continue
+            return total
+        except Exception:
+            return 0
+
+    def configured_cache_dir_text(self) -> str:
+        return str(self.config.get("download_dir", "data/downloads") or "data/downloads").strip()
+
+    def format_cache_list(self, limit=30):
+        c = self.cfg()
+        d = c["download_dir"]
+        display_dir = self.configured_cache_dir_text()
+        d.mkdir(parents=True, exist_ok=True)
+        try:
+            children = list(d.iterdir())
+        except Exception as e:
+            return f"读取缓存目录失败：{e}"
+        entries = []
+        for path in children:
+            try:
+                entries.append((path.stat().st_mtime, path))
+            except Exception:
+                continue
+        entries.sort(key=lambda x: x[0], reverse=True)
+        if not entries:
+            return f"Pixivc 缓存列表：空\n缓存目录：{display_dir}"
+        limit = max(1, int(limit or 30))
+        lines = [f"Pixivc 缓存列表：{len(entries)} 项", f"缓存目录：{display_dir}"]
+        for i, (mtime, path) in enumerate(entries[:limit], 1):
+            kind = "目录" if path.is_dir() else "文件"
+            size = self.format_size(self.path_total_size(path))
+            ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(mtime))
+            lines.append(f"{i}. [{kind}] {path.name} | {size} | {ts}")
+        if len(entries) > limit:
+            lines.append(f"还有 {len(entries) - limit} 项未显示，可用 n 调整显示数量。")
+        return "\n".join(lines)
 
     def cfg(self):
         proxy = str(self.config.get("proxy") or os.getenv("HTTPS_PROXY") or os.getenv("https_proxy") or os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or "").strip()
@@ -949,7 +1014,42 @@ class PixivcCrawlerPlugin(Star):
                 raise RuntimeError(f"HTTP {resp.status}")
             path.write_bytes(await resp.read())
 
-    async def prepare_illust_files(self, items, label="pixivs"):
+
+    def generate_zip_password(self, length=16) -> str:
+        lowers = string.ascii_lowercase
+        uppers = string.ascii_uppercase
+        digits = string.digits
+        symbols = "!@#$%^&*()-_=+[]{};,.?"
+        chars = [
+            secrets.choice(lowers),
+            secrets.choice(uppers),
+            secrets.choice(digits),
+            secrets.choice(symbols),
+        ]
+        pool = lowers + uppers + digits + symbols
+        chars.extend(secrets.choice(pool) for _ in range(max(0, length - len(chars))))
+        secrets.SystemRandom().shuffle(chars)
+        return "".join(chars)
+
+    def new_zip_writer(self, zip_path: Path):
+        if not self.cfg().get("encrypt_zip_enabled", bool(self.config.get("encrypt_zip_enabled", False))):
+            return zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED), ""
+        if pyzipper is None:
+            raise RuntimeError("已开启 ZIP 加密，但缺少依赖 pyzipper，请安装 requirements.txt 后重启插件。")
+        password = self.generate_zip_password()
+        zf = pyzipper.AESZipFile(zip_path, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES)
+        zf.setpassword(password.encode("utf-8"))
+        return zf, password
+
+    def remember_zip_password(self, password: str):
+        self._last_zip_password = password or ""
+
+    def pop_zip_password(self) -> str:
+        password = getattr(self, "_last_zip_password", "") or ""
+        self._last_zip_password = ""
+        return password
+
+    async def prepare_illust_files(self, items, label="pixivs", progress_cb=None, make_zip=True):
         c = self.cfg()
         ts = time.strftime("%Y%m%d_%H%M%S")
         base = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}"
@@ -990,10 +1090,27 @@ class PixivcCrawlerPlugin(Star):
         info_path = base / "info.txt"
         info_path.write_text("\n\n".join(infos), encoding="utf-8")
         zip_path = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}.zip"
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        if not make_zip:
+            return base, zip_path, saved
+        zip_seen_ids = set()
+        zip_ids = []
+        for _, item, _, _ in saved:
+            iid = item_id(item)
+            if iid and iid not in zip_seen_ids:
+                zip_seen_ids.add(iid)
+                zip_ids.append(iid)
+        zip_total = max(1, len(zip_ids))
+        zip_done_ids = set()
+        zf, zip_password = self.new_zip_writer(zip_path)
+        self.remember_zip_password(zip_password)
+        with zf:
             if c["include_info_txt"]:
                 zf.write(info_path, "info.txt")
-            for p, *_ in saved:
+            for p, item, *_ in saved:
+                iid = item_id(item)
+                if progress_cb and iid and iid not in zip_done_ids:
+                    zip_done_ids.add(iid)
+                    await progress_cb(iid, len(zip_done_ids), zip_total)
                 zf.write(p, f"images/{p.name}")
         return base, zip_path, saved
 
@@ -1007,11 +1124,11 @@ class PixivcCrawlerPlugin(Star):
             logger.warning(f"pixivc novel text failed {novel_id}: {e}")
             return ""
 
-    async def prepare_original_zip_from_items(self, items, label="pixivc_original"):
+    async def prepare_original_zip_from_items(self, items, label="pixivc_original", progress_cb=None):
         old_quality = self.config.get("image_quality")
         self.config["image_quality"] = "original"
         try:
-            return await self.prepare_illust_files(items, label)
+            return await self.prepare_illust_files(items, label, progress_cb=progress_cb)
         finally:
             if old_quality is None:
                 self.config.pop("image_quality", None)
@@ -1058,7 +1175,7 @@ class PixivcCrawlerPlugin(Star):
             infos.append(info)
         return infos
 
-    async def prepare_novel_files(self, items, label="pixivc_novel"):
+    async def prepare_novel_files(self, items, label="pixivc_novel", progress_cb=None):
         c = self.cfg()
         ts = time.strftime("%Y%m%d_%H%M%S")
         base = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}"
@@ -1092,21 +1209,58 @@ class PixivcCrawlerPlugin(Star):
         info_path = base / "info.txt"
         info_path.write_text("\n\n".join(infos), encoding="utf-8")
         zip_path = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}.zip"
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zip_seen_ids = set()
+        zip_ids = []
+        for _, item, _ in files:
+            nid = item_id(item)
+            if nid and nid not in zip_seen_ids:
+                zip_seen_ids.add(nid)
+                zip_ids.append(nid)
+        zip_total = max(1, len(zip_ids))
+        zip_done_ids = set()
+        zf, zip_password = self.new_zip_writer(zip_path)
+        self.remember_zip_password(zip_password)
+        with zf:
             if c["include_info_txt"]:
                 zf.write(info_path, "info.txt")
             for p, item, text in files:
+                nid = item_id(item)
+                if progress_cb and nid and nid not in zip_done_ids:
+                    zip_done_ids.add(nid)
+                    await progress_cb(nid, len(zip_done_ids), zip_total)
                 sub = "covers" if "cover" in p.name else "novels"
                 zf.write(p, f"{sub}/{p.name}")
         return base, zip_path, files, infos
 
-    async def send_zip(self, event: AstrMessageEvent, zip_path: Path):
+    async def send_zip(self, event: AstrMessageEvent, zip_path: Path, suppress_ready: bool = False):
         c = self.cfg()
-        if zip_path.stat().st_size > c["max_zip_mb"] * 1024 * 1024:
-            yield event.plain_result(f"ZIP 超过大小限制 {c['max_zip_mb']}MB，已取消发送。")
+        size = zip_path.stat().st_size
+        size_text = self.format_size(size)
+        if size > c["max_zip_mb"] * 1024 * 1024:
+            yield event.plain_result(f"ZIP 大小 {size_text}，超过限制 {c['max_zip_mb']}MB，已取消发送。")
             return
-        data = base64.b64encode(zip_path.read_bytes()).decode()
-        yield event.chain_result([File(name=zip_path.name, file="base64://" + data)])
+        password = self.pop_zip_password()
+        if not suppress_ready:
+            if password:
+                yield event.plain_result(f"ZIP 已生成：{zip_path.name}，大小 {size_text}，已加密。解压密码：【{password}】。正在发送文件……")
+            else:
+                yield event.plain_result(f"ZIP 已生成：{zip_path.name}，大小 {size_text}，正在发送文件……")
+        elif password:
+            yield event.plain_result(f"缓存 ZIP 已加密。解压密码：【{password}】")
+        try:
+            # 优先使用本地文件路径发送，部分适配器对 base64 文件消息支持不稳定。
+            yield event.chain_result([File(name=zip_path.name, file=str(zip_path))])
+            yield event.plain_result("ZIP 文件发送请求已提交。若聊天窗口未显示文件，请检查当前适配器是否支持本地路径文件消息。")
+            return
+        except Exception as e1:
+            logger.warning(f"pixivc zip send by path failed: {e1}", exc_info=True)
+            try:
+                data = base64.b64encode(zip_path.read_bytes()).decode()
+                yield event.chain_result([File(name=zip_path.name, file="base64://" + data)])
+                yield event.plain_result("ZIP 文件发送请求已提交（base64 兜底）。若聊天窗口未显示文件，请检查当前适配器文件消息支持。")
+                return
+            except Exception as e2:
+                yield event.plain_result(f"ZIP 文件发送失败：本地路径发送失败：{e1}；base64 发送失败：{e2}")
 
     async def send_images(self, event, saved):
         c = self.cfg()
@@ -1119,18 +1273,37 @@ class PixivcCrawlerPlugin(Star):
 
     async def send_forward(self, event, saved, novel_infos=None):
         c = self.cfg()
-        nodes = []
+        batch_size = 20
         if novel_infos is not None:
-            for info in novel_infos:
-                nodes.append(Node(name="PixivcNovel", uin="0", content=[Plain(info)]))
-        else:
-            for p, item, idx, total in saved:
+            all_infos = list(novel_infos or [])
+            total = len(all_infos)
+            if not all_infos:
+                return
+            for start in range(0, total, batch_size):
+                part = all_infos[start:start + batch_size]
+                nodes = [Node(name="PixivcNovel", uin="0", content=[Plain(info)]) for info in part]
+                if total > batch_size:
+                    yield event.plain_result(f"正在发送小说合并转发预览：{start + 1}-{start + len(part)}/{total}")
+                yield event.chain_result([Nodes(nodes)])
+                await asyncio.sleep(0.2)
+            return
+
+        all_saved = list(saved or [])
+        total = len(all_saved)
+        if not all_saved:
+            return
+        for start in range(0, total, batch_size):
+            part = all_saved[start:start + batch_size]
+            nodes = []
+            for p, item, idx, total_pages in part:
                 content = [Image.fromFileSystem(str(p))]
                 if c["forward_mode"] != "only_images":
-                    content.append(Plain(build_illust_info(item, idx, total, c["image_quality"], c["include_tags"], c["max_tags_display"], c["include_caption"])))
+                    content.append(Plain(build_illust_info(item, idx, total_pages, c["image_quality"], c["include_tags"], c["max_tags_display"], c["include_caption"])))
                 nodes.append(Node(name="Pixivc", uin="0", content=content))
-        if nodes:
+            if total > batch_size:
+                yield event.plain_result(f"正在发送图片合并转发预览：{start + 1}-{start + len(part)}/{total}")
             yield event.chain_result([Nodes(nodes)])
+            await asyncio.sleep(0.2)
 
     def _plain_item(self, item):
         if isinstance(item, dict):
@@ -1206,6 +1379,57 @@ class PixivcCrawlerPlugin(Star):
         if c["clean_after_send"]:
             shutil.rmtree(base, ignore_errors=True)
 
+    async def yield_pack_progress(self, event, items, kind="作品"):
+        ids = []
+        seen = set()
+        for item in items:
+            iid = item_id(item)
+            if not iid or iid in seen:
+                continue
+            seen.add(iid)
+            ids.append(iid)
+        total = max(1, len(ids))
+        for idx, iid in enumerate(ids, 1):
+            percent = int(idx * 100 / total)
+            yield event.plain_result(f"正在处理{kind}ID：{iid}（{idx}/{total}，{percent}%）")
+            await asyncio.sleep(0)
+
+    async def prepare_with_live_progress(self, event, items, kind, prepare_factory):
+        ids = []
+        id_set = set()
+        for item in items:
+            iid = item_id(item)
+            if iid and iid not in id_set:
+                id_set.add(iid)
+                ids.append(iid)
+        total = max(1, len(ids))
+        seen = set()
+        queue = asyncio.Queue()
+
+        async def progress_cb(iid, idx=None, total_count=None):
+            if not self.cfg().get("show_pack_progress", True):
+                return
+            iid = str(iid or "").strip()
+            if not iid or iid in seen:
+                return
+            seen.add(iid)
+            idx = int(idx or len(seen))
+            total_count = max(1, int(total_count or total))
+            percent = int(idx * 100 / total_count)
+            yield_kind = "作品" if kind in {"作品", "画作"} else kind
+            await queue.put(f"正在打包，{yield_kind}ID：{iid}，当前进度({idx}/{total_count}){percent}%。")
+
+        task = asyncio.create_task(prepare_factory(progress_cb))
+        while True:
+            if task.done() and queue.empty():
+                break
+            try:
+                msg = await asyncio.wait_for(queue.get(), timeout=0.2)
+                yield ("progress", event.plain_result(msg))
+            except asyncio.TimeoutError:
+                pass
+        yield ("result", await task)
+
     async def dispatch_novel_result(self, event, base, zip_path, files, infos):
         c = self.cfg()
         mode = c["novel_send_mode"]
@@ -1257,7 +1481,7 @@ class PixivcCrawlerPlugin(Star):
                         if len(items) < requested_count:
                             yield event.plain_result(f"只找到 {len(items)}/{requested_count} 个符合条件的作品。原因：{self.collect_end_reason_text()}。" + ("\n" + self._last_debug if self._last_debug else ""))
                         self.save_last_items(event, items, label, "illust")
-                        base, zip_path, saved = await self.prepare_illust_files(items, "pixivc_preview_" + label)
+                        base, zip_path, saved = await self.prepare_illust_files(items, "pixivc_preview_" + label, make_zip=False)
                         if not saved:
                             yield event.plain_result("找到作品但图片下载失败，请检查代理或 Pixiv 访问。")
                             return
@@ -1796,7 +2020,8 @@ class PixivcCrawlerPlugin(Star):
         # 已有 ZIP 且类型匹配时直接发送
         if data and (not item_data or data.get("kind", last_kind) == last_kind):
             path = Path(data["path"])
-            async for r in self.send_zip(event, path):
+            yield event.plain_result(f"检测到本地已有缓存 ZIP：{path.name}，直接发送，不重新打包。")
+            async for r in self.send_zip(event, path, suppress_ready=True):
                 yield r
             return
         if not item_data:
@@ -1812,14 +2037,26 @@ class PixivcCrawlerPlugin(Star):
             try:
                 if kind == "novel":
                     yield event.plain_result("正在打包小说 ZIP，请稍等。")
-                    base, zip_path, files, infos = await self.prepare_novel_files(items, "pixivc_novel_" + str(label))
+                    prep_result = None
+                    async for typ, payload in self.prepare_with_live_progress(event, items, "小说", lambda cb: self.prepare_novel_files(items, "pixivc_novel_" + str(label), progress_cb=cb)):
+                        if typ == "progress":
+                            yield payload
+                        else:
+                            prep_result = payload
+                    base, zip_path, files, infos = prep_result
                     self.save_last_zip(event, zip_path, label, len(items), kind="novel")
                     async for r in self.send_zip(event, zip_path):
                         yield r
                     shutil.rmtree(base, ignore_errors=True)
                 else:
                     yield event.plain_result("正在下载 original 并打包图片 ZIP，请稍等。")
-                    base, zip_path, saved = await self.prepare_original_zip_from_items(items, "pixivc_original_" + str(label))
+                    prep_result = None
+                    async for typ, payload in self.prepare_with_live_progress(event, items, "作品", lambda cb: self.prepare_original_zip_from_items(items, "pixivc_original_" + str(label), progress_cb=cb)):
+                        if typ == "progress":
+                            yield payload
+                        else:
+                            prep_result = payload
+                    base, zip_path, saved = prep_result
                     if not saved:
                         yield event.plain_result("original 下载失败，请检查代理或 Pixiv 访问。")
                         return
@@ -1870,6 +2107,11 @@ class PixivcCrawlerPlugin(Star):
             yield event.plain_result("Pixivc R18 白名单：空")
         else:
             yield event.plain_result("Pixivc R18 白名单：\n" + "\n".join(data))
+
+    @filter.command("pixivc_cache")
+    async def pixivc_cache(self, event: AstrMessageEvent, args: str = ""):
+        _, count = self.parse_query_count(full_command_args(event, "pixivc_cache", args))
+        yield event.plain_result(self.format_cache_list(count))
 
     @filter.command("pixivc_clean")
     async def pixivc_clean(self, event: AstrMessageEvent):
