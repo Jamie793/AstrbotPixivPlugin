@@ -13,7 +13,8 @@ AUTH_TOKEN_URL = 'https://oauth.secure.pixiv.net/auth/token'
 LOGIN_URL = 'https://app-api.pixiv.net/web/v1/login'
 REDIRECT_URI = 'https://app-api.pixiv.net/web/v1/users/auth/pixiv/callback'
 # Pixiv 官方 Android App OAuth 公共客户端参数，用于 App API PKCE 登录流程。
-# 可用环境变量 PIXIV_CLIENT_ID / PIXIV_CLIENT_SECRET 覆盖，避免在私有部署中固定凭据。
+# 这组值是 Pixiv Android App 协议中公开且广泛使用的公共客户端参数，
+# 不是本插件作者的私有密钥；优先支持用环境变量覆盖，便于私有部署和安全扫描治理。
 DEFAULT_CLIENT_ID = 'MOBrBDS8blbauoSck0ZfDbtuzpyT'
 DEFAULT_CLIENT_SECRET = 'lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj'
 USER_AGENT = 'PixivAndroidApp/5.0.234 (Android 11; Pixel 5)'

@@ -79,6 +79,15 @@ class DownloaderService(BaseService):
         self._last_zip_password = ""
         return password
 
+    def write_zip_archive(self, zip_path: Path, info_path: Path, files, include_info_txt: bool):
+        zf, zip_password = self.new_zip_writer(zip_path)
+        with zf:
+            if include_info_txt:
+                zf.write(info_path, "info.txt")
+            for p, arcname in files:
+                zf.write(p, arcname)
+        return zip_password
+
     async def prepare_illust_files(self, items, label="pixivs", progress_cb=None, make_zip=True):
         c = self.config_service.cfg()
         ts = time.strftime("%Y%m%d_%H%M%S")
@@ -131,17 +140,17 @@ class DownloaderService(BaseService):
                 zip_ids.append(iid)
         zip_total = max(1, len(zip_ids))
         zip_done_ids = set()
-        zf, zip_password = self.new_zip_writer(zip_path)
+        zip_files = []
+        for p, item, *_ in saved:
+            iid = item_id(item)
+            if progress_cb and iid and iid not in zip_done_ids:
+                zip_done_ids.add(iid)
+                await progress_cb(iid, len(zip_done_ids), zip_total)
+            zip_files.append((p, f"images/{p.name}"))
+        zip_password = await asyncio.to_thread(
+            self.write_zip_archive, zip_path, info_path, zip_files, c["include_info_txt"]
+        )
         self.remember_zip_password(zip_password)
-        with zf:
-            if c["include_info_txt"]:
-                zf.write(info_path, "info.txt")
-            for p, item, *_ in saved:
-                iid = item_id(item)
-                if progress_cb and iid and iid not in zip_done_ids:
-                    zip_done_ids.add(iid)
-                    await progress_cb(iid, len(zip_done_ids), zip_total)
-                zf.write(p, f"images/{p.name}")
         return base, zip_path, saved
 
     async def prepare_original_zip_from_items(self, items, label="pixivc_original", progress_cb=None):
@@ -198,18 +207,18 @@ class DownloaderService(BaseService):
                 zip_ids.append(nid)
         zip_total = max(1, len(zip_ids))
         zip_done_ids = set()
-        zf, zip_password = self.new_zip_writer(zip_path)
+        zip_files = []
+        for p, item, text in files:
+            nid = item_id(item)
+            if progress_cb and nid and nid not in zip_done_ids:
+                zip_done_ids.add(nid)
+                await progress_cb(nid, len(zip_done_ids), zip_total)
+            sub = "covers" if "cover" in p.name else "novels"
+            zip_files.append((p, f"{sub}/{p.name}"))
+        zip_password = await asyncio.to_thread(
+            self.write_zip_archive, zip_path, info_path, zip_files, c["include_info_txt"]
+        )
         self.remember_zip_password(zip_password)
-        with zf:
-            if c["include_info_txt"]:
-                zf.write(info_path, "info.txt")
-            for p, item, text in files:
-                nid = item_id(item)
-                if progress_cb and nid and nid not in zip_done_ids:
-                    zip_done_ids.add(nid)
-                    await progress_cb(nid, len(zip_done_ids), zip_total)
-                sub = "covers" if "cover" in p.name else "novels"
-                zf.write(p, f"{sub}/{p.name}")
         return base, zip_path, files, infos
 
     async def yield_pack_progress(self, event, items, kind="作品"):

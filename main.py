@@ -489,7 +489,7 @@ class PixivcCrawlerPlugin(Star):
     @filter.command("pixivc_cache")
     async def pixivc_cache(self, event: AstrMessageEvent, args: str = ""):
         _, count = self.query.parse_query_count(full_command_args(event, "pixivc_cache", args))
-        yield event.plain_result(self.cache.format_cache_list(count))
+        yield event.plain_result(await asyncio.to_thread(self.cache.format_cache_list, count))
 
     @filter.command("pixivc_clean")
     async def pixivc_clean(self, event: AstrMessageEvent):

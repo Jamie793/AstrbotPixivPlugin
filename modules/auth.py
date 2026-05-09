@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import time
+import uuid
 from astrbot.api import logger
 from pixivpy3 import AppPixivAPI, ByPassSniApi
 from .base import BaseService
@@ -30,9 +31,15 @@ class AuthService(BaseService):
                 payload["expires_at"] = int(time.time()) + int(expires_in)
             except Exception:
                 pass
-        tmp = TOKEN_STATE_FILE.with_suffix(".tmp")
-        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        os.replace(tmp, TOKEN_STATE_FILE)
+        tmp = TOKEN_STATE_FILE.with_name(f"{TOKEN_STATE_FILE.name}.tmp.{uuid.uuid4().hex}")
+        try:
+            tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            os.replace(tmp, TOKEN_STATE_FILE)
+        finally:
+            try:
+                tmp.unlink(missing_ok=True)
+            except Exception:
+                pass
         try:
             os.chmod(TOKEN_STATE_FILE, 0o600)
         except Exception:
