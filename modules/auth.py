@@ -145,6 +145,11 @@ class AuthService(BaseService):
             status = getattr(resp, "status_code", None)
             if status in (401, 403):
                 return True
+            # pixivpy3 的高级接口经常不会保留 HTTP status_code，
+            # 而是直接返回 JsonDict: {"error": {...}}。
+            # 这种情况下也应触发一次静默刷新，否则会被上层误判为“没有作品”。
+            if isinstance(resp, dict) and resp.get("error"):
+                return True
             try:
                 err = resp.json()
             except Exception:
