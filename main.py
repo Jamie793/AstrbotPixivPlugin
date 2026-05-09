@@ -77,87 +77,6 @@ class PixivcCrawlerPlugin(ConfigMixin, AuthMixin, CacheMixin, QueryMixin, Permis
             logger.info("Pixivc Refresh Token 静默刷新任务已停止")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     @filter.command("pixivc_get_token", alias={"获取P站Token"})
     async def pixivc_get_token(self, event: AstrMessageEvent):
         yield event.plain_result("我正在生成 Pixiv 官方 OAuth 登录链接。")
@@ -189,17 +108,6 @@ class PixivcCrawlerPlugin(ConfigMixin, AuthMixin, CacheMixin, QueryMixin, Permis
     @filter.command("pixivc_help", alias={"pixivs帮助"})
     async def pixivc_help(self, event: AstrMessageEvent):
         yield event.plain_result(self.build_help_text())
-
-
-
-
-
-
-
-
-
-
-
 
 
     @filter.command("pixivc_auto")
@@ -267,8 +175,6 @@ class PixivcCrawlerPlugin(ConfigMixin, AuthMixin, CacheMixin, QueryMixin, Permis
         _, count, tag_terms = self.parse_query_count_tags(full_command_args(event, "pixivc_bookmarks", args))
         async for r in self.run_illust_job(event, "my_bookmarks", lambda: self._collect_my_bookmarks(count, tag_terms)):
             yield r
-
-
 
 
     @filter.command("pixivc_trending_tags")
