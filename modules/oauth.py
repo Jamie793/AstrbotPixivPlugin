@@ -3,6 +3,7 @@ import hashlib
 import json
 import secrets
 import time
+import os
 import urllib.parse
 from pathlib import Path
 
@@ -12,9 +13,9 @@ AUTH_TOKEN_URL = 'https://oauth.secure.pixiv.net/auth/token'
 LOGIN_URL = 'https://app-api.pixiv.net/web/v1/login'
 REDIRECT_URI = 'https://app-api.pixiv.net/web/v1/users/auth/pixiv/callback'
 # Pixiv 官方 Android App OAuth 公共客户端参数，用于 App API PKCE 登录流程。
-# 这不是本插件作者的私有密钥；如 Pixiv 官方客户端参数变更，需要同步更新。
-CLIENT_ID = 'MOBrBDS8blbauoSck0ZfDbtuzpyT'
-CLIENT_SECRET = 'lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj'
+# 可用环境变量 PIXIV_CLIENT_ID / PIXIV_CLIENT_SECRET 覆盖，避免在私有部署中固定凭据。
+DEFAULT_CLIENT_ID = 'MOBrBDS8blbauoSck0ZfDbtuzpyT'
+DEFAULT_CLIENT_SECRET = 'lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj'
 USER_AGENT = 'PixivAndroidApp/5.0.234 (Android 11; Pixel 5)'
 
 
@@ -80,8 +81,8 @@ async def exchange_token(callback_text: str, state_path: Path) -> dict:
     if not code_verifier:
         return {'error': 'code_verifier_not_found', 'hint': '请重新发送 /pixiv_get_token'}
     form = {
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET,
+        'client_id': os.getenv('PIXIV_CLIENT_ID', DEFAULT_CLIENT_ID),
+        'client_secret': os.getenv('PIXIV_CLIENT_SECRET', DEFAULT_CLIENT_SECRET),
         'code': code,
         'code_verifier': code_verifier,
         'grant_type': 'authorization_code',
