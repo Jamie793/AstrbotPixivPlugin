@@ -191,42 +191,75 @@ class AuthService(BaseService):
     async def api_call(self, method_name: str, *args, **kwargs):
         api = await self.api()
         method = getattr(api, method_name)
+        retried = False
         try:
             resp = await asyncio.to_thread(method, *args, **kwargs)
             if self._looks_auth_failed(resp=resp):
+                retried = True
                 api = await self.refresh_api_silent()
                 resp = await asyncio.to_thread(getattr(api, method_name), *args, **kwargs)
+            self.debug.record_api(method_name, args=args, kwargs=kwargs, resp=resp, retried=retried)
             return resp
         except Exception as e:
             if self._looks_auth_failed(exc=e):
-                api = await self.refresh_api_silent()
-                return await asyncio.to_thread(getattr(api, method_name), *args, **kwargs)
+                retried = True
+                try:
+                    api = await self.refresh_api_silent()
+                    resp = await asyncio.to_thread(getattr(api, method_name), *args, **kwargs)
+                    self.debug.record_api(method_name, args=args, kwargs=kwargs, resp=resp, retried=retried)
+                    return resp
+                except Exception as e2:
+                    self.debug.record_api(method_name, args=args, kwargs=kwargs, error=e2, retried=retried)
+                    raise
+            self.debug.record_api(method_name, args=args, kwargs=kwargs, error=e, retried=retried)
             raise
 
     async def api_requests_call(self, method: str, url: str, **kwargs):
         api = await self.api()
+        retried = False
         try:
             resp = await asyncio.to_thread(api.requests_call, method, url, **kwargs)
             if self._looks_auth_failed(resp=resp):
+                retried = True
                 api = await self.refresh_api_silent()
                 resp = await asyncio.to_thread(api.requests_call, method, url, **kwargs)
+            self.debug.record_api(f"requests_call:{method}", kwargs=kwargs, resp=resp, retried=retried, raw_url=url)
             return resp
         except Exception as e:
             if self._looks_auth_failed(exc=e):
-                api = await self.refresh_api_silent()
-                return await asyncio.to_thread(api.requests_call, method, url, **kwargs)
+                retried = True
+                try:
+                    api = await self.refresh_api_silent()
+                    resp = await asyncio.to_thread(api.requests_call, method, url, **kwargs)
+                    self.debug.record_api(f"requests_call:{method}", kwargs=kwargs, resp=resp, retried=retried, raw_url=url)
+                    return resp
+                except Exception as e2:
+                    self.debug.record_api(f"requests_call:{method}", kwargs=kwargs, error=e2, retried=retried, raw_url=url)
+                    raise
+            self.debug.record_api(f"requests_call:{method}", kwargs=kwargs, error=e, retried=retried, raw_url=url)
             raise
 
     async def api_no_auth_requests_call(self, method: str, url: str, **kwargs):
         api = await self.api()
+        retried = False
         try:
             resp = await asyncio.to_thread(api.no_auth_requests_call, method, url, req_auth=True, **kwargs)
             if self._looks_auth_failed(resp=resp):
+                retried = True
                 api = await self.refresh_api_silent()
                 resp = await asyncio.to_thread(api.no_auth_requests_call, method, url, req_auth=True, **kwargs)
+            self.debug.record_api(f"no_auth_requests_call:{method}", kwargs=kwargs, resp=resp, retried=retried, raw_url=url)
             return resp
         except Exception as e:
             if self._looks_auth_failed(exc=e):
-                api = await self.refresh_api_silent()
-                return await asyncio.to_thread(api.no_auth_requests_call, method, url, req_auth=True, **kwargs)
+                retried = True
+                try:
+                    api = await self.refresh_api_silent()
+                    resp = await asyncio.to_thread(api.no_auth_requests_call, method, url, req_auth=True, **kwargs)
+                    self.debug.record_api(f"no_auth_requests_call:{method}", kwargs=kwargs, resp=resp, retried=retried, raw_url=url)
+                    return resp
+                except Exception as e2:
+                    self.debug.record_api(f"no_auth_requests_call:{method}", kwargs=kwargs, error=e2, retried=retried, raw_url=url)
+                    raise
+            self.debug.record_api(f"no_auth_requests_call:{method}", kwargs=kwargs, error=e, retried=retried, raw_url=url)
             raise

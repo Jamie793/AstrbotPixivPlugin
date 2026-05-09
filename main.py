@@ -16,6 +16,7 @@ from .modules.auth import AuthService
 from .modules.cache import CacheService
 from .modules.config import ConfigService
 from .modules.downloader import DownloaderService
+from .modules.debug import DebugService
 from .modules.illust import IllustService
 from .modules.misc import MiscService
 from .modules.novel import NovelService
@@ -25,7 +26,7 @@ from .modules.sender import SenderService
 from .modules.social import SocialService
 from .modules.errors import PixivRefreshTokenInvalidError
 from .modules.oauth import generate_login_url, exchange_token, token_parts
-from .modules.paths import OAUTH_STATE_FILE, TOKEN_STATE_FILE
+from .modules.paths import OAUTH_STATE_FILE, TOKEN_STATE_FILE, DATA_DIR, PLUGIN_DIR
 from .modules.pixiv_utils import full_command_args, getv, item_id, split_terms
 
 @register(
@@ -44,6 +45,13 @@ class PixivcCrawlerPlugin(Star):
         self._current_allow_r18 = None
         self._current_start_page_override = None
         self._last_debug = ""
+        self._last_api_debug = ""
+        self._debug_max_records = 30
+        self._debug_enabled = bool(self.config.get("debug_enabled", False))
+        self._debug_records = None
+        self._debug_outputs = None
+        self._last_saved_files = []
+        self._last_saved_label = ""
         self._clean_task = None
         self._refresh_token_task = None
         self.config_service = ConfigService(self)
@@ -51,6 +59,7 @@ class PixivcCrawlerPlugin(Star):
         self.cache = CacheService(self)
         self.query = QueryService(self)
         self.permissions = PermissionService(self)
+        self.debug = DebugService(self)
         self.downloader = DownloaderService(self)
         self.sender = SenderService(self)
         self.illust = IllustService(self)
@@ -108,6 +117,63 @@ class PixivcCrawlerPlugin(Star):
     @filter.command("pixivc_help", alias={"pixivs帮助"})
     async def pixivc_help(self, event: AstrMessageEvent):
         yield event.plain_result(self.misc.build_help_text())
+
+    @filter.command("pixivc_debug", alias={"pixicv_debug"})
+    async def pixivc_debug(self, event: AstrMessageEvent, args: str = ""):
+        if not self.permissions.is_bot_admin(event):
+            yield event.plain_result(self.permissions.admin_denied_text())
+            return
+        q = full_command_args(event, "pixivc_debug", args).strip()
+        parts = q.split()
+        sub = parts[0].lower() if parts else "help"
+        limit = 5
+        if len(parts) >= 2 and parts[1].isdigit():
+            limit = max(1, min(20, int(parts[1])))
+        if sub in {"help", "", "?"}:
+            yield event.plain_result(
+                "Pixivc Debug 用法：\n"
+                "/pixivc_debug enable  运行时开启调试记录\n"
+                "/pixivc_debug disable  运行时关闭调试记录\n"
+                "/pixivc_debug state  查看运行状态\n"
+                "/pixivc_debug output [数量]  查看最近输出摘要\n"
+                "/pixivc_debug api [数量]  查看最近 API 请求结果摘要\n"
+                "/pixivc_debug last  查看最近过滤/收集调试信息\n"
+                "/pixivc_debug file [数量]  查看最近预览图文件状态\n"
+                "/pixivc_debug clean  清空调试记录\n"
+                "说明：仅 bot 管理者可用，token/cookie 等敏感字段会被隐藏。"
+            )
+            return
+        if sub in {"enable", "on"}:
+            self._debug_enabled = True
+            yield event.plain_result("Pixivc 调试记录已开启。")
+            return
+        if sub in {"disable", "off"}:
+            self._debug_enabled = False
+            yield event.plain_result("Pixivc 调试记录已关闭。已有记录不会删除，发送 /pixivc_debug clean 可清空。")
+            return
+        if sub in {"state", "status"}:
+            yield event.plain_result(self.debug.state_text())
+            return
+        if sub in {"output", "outputs", "out"}:
+            yield event.plain_result("最近输出摘要：\n" + self.debug.format_recent(self.debug.outputs, limit))
+            return
+        if sub in {"api", "request", "requests"}:
+            yield event.plain_result("最近 API 请求结果：\n" + self.debug.format_recent(self.debug.records, limit))
+            return
+        if sub in {"last", "collect"}:
+            text = self._last_debug or "暂无过滤/收集调试信息。"
+            api_text = self._last_api_debug or "暂无 API 调试信息。"
+            yield event.plain_result(text + "\n\n最近 API：\n" + api_text)
+            return
+        if sub in {"file", "files"}:
+            yield event.plain_result(self.debug.files_text(limit))
+            return
+        if sub in {"clear", "clean"}:
+            self.debug.clear()
+            yield event.plain_result("Pixivc 调试记录已清空。")
+            return
+        yield event.plain_result("未知子命令。发送 /pixivc_debug help 查看用法。")
+
 
     @filter.command("pixivc_auto")
     async def pixivc_auto(self, event: AstrMessageEvent, args: str = ""):
@@ -280,7 +346,7 @@ class PixivcCrawlerPlugin(Star):
             f"novel_send_mode：{c['novel_send_mode']}\n"
             f"novel_preview_max_chars：{c['novel_preview_max_chars']}\n"
             f"novel_preview_total_chars：{c['novel_preview_total_chars']}\n"
-            f"download_dir：{c['download_dir']}\n"
+            f"download_dir：{self.debug.short_path(c['download_dir'])}\n"
             f"auto_clean_enabled：{c['auto_clean_enabled']}\n"
             f"auto_clean_time：{c['auto_clean_hour']:02d}:{c['auto_clean_minute']:02d}\n"
             f"admin_discovery：{c['admin_discovery']}\n"

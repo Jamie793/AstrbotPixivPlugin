@@ -101,8 +101,25 @@ class SenderService(BaseService):
         c = self.config_service.cfg()
         # 图片搜索默认只发送合并转发预览，不自动生成/发送 ZIP。
         preview_saved = saved
-        async for r in self.send_forward(event, preview_saved):
-            yield r
+        try:
+            sent_any = False
+            async for r in self.send_forward(event, preview_saved):
+                sent_any = True
+                self.debug.record_output("合并转发预览消息已提交。")
+                yield r
+            if not sent_any:
+                msg = "合并转发预览没有生成任何消息，已改用普通图片发送兜底。"
+                self.debug.record_output(msg)
+                yield event.plain_result(msg)
+                async for r in self.send_images(event, preview_saved):
+                    yield r
+        except Exception as e:
+            msg = f"合并转发预览发送失败，已改用普通图片发送兜底：{type(e).__name__}: {e}"
+            logger.warning(msg, exc_info=True)
+            self.debug.record_output(msg, kind="error")
+            yield event.plain_result(msg)
+            async for r in self.send_images(event, preview_saved):
+                yield r
         if c["clean_after_send"]:
             shutil.rmtree(base, ignore_errors=True)
 

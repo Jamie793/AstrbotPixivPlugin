@@ -113,3 +113,7 @@ class BaseService:
     @property
     def misc(self):
         return self.p.misc
+
+    @property
+    def debug(self):
+        return self.p.debug

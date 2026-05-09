@@ -211,7 +211,9 @@ class IllustService(BaseService):
                 for attempt in range(2):
                     try:
                         if attempt == 0:
-                            yield event.plain_result(f"开始爬取 Pixiv：{label}。")
+                            msg = f"开始爬取 Pixiv：{label}。"
+                            self.debug.record_output(msg)
+                            yield event.plain_result(msg)
                         else:
                             logger.info("Pixivc 已静默刷新 access token，正在自动重试本次图片命令。")
                         self._last_requested_count = None
@@ -219,14 +221,29 @@ class IllustService(BaseService):
                         items = await collector()
                         requested_count = int(self._last_requested_count or len(items) or c["default_count"])
                         if not items:
-                            yield event.plain_result(f"没有找到符合条件的作品。原因：{self.query.collect_end_reason_text()}。" + ("\n" + self._last_debug if self._last_debug else ""))
+                            msg = f"没有找到符合条件的作品。原因：{self.query.collect_end_reason_text()}。" + ("\n" + self._last_debug if self._last_debug else "")
+                            self.debug.record_output(msg)
+                            yield event.plain_result(msg)
                             return
                         if len(items) < requested_count:
-                            yield event.plain_result(f"只找到 {len(items)}/{requested_count} 个符合条件的作品。原因：{self.query.collect_end_reason_text()}。" + ("\n" + self._last_debug if self._last_debug else ""))
+                            msg = f"只找到 {len(items)}/{requested_count} 个符合条件的作品。原因：{self.query.collect_end_reason_text()}。" + ("\n" + self._last_debug if self._last_debug else "")
+                            self.debug.record_output(msg)
+                            yield event.plain_result(msg)
                         self.cache.save_last_items(event, items, label, "illust")
                         base, zip_path, saved = await self.downloader.prepare_illust_files(items, "pixivc_preview_" + label, make_zip=False)
+                        self.p._last_saved_label = label
+                        self.p._last_saved_files = [
+                            {
+                                "path": str(p),
+                                "work_id": item_id(item),
+                                "page": f"{idx}/{total}",
+                            }
+                            for p, item, idx, total in (saved or [])
+                        ]
                         if not saved:
-                            yield event.plain_result("找到作品但图片下载失败，请检查代理或 Pixiv 访问。")
+                            msg = "找到作品但图片下载失败，请检查代理或 Pixiv 访问。"
+                            self.debug.record_output(msg)
+                            yield event.plain_result(msg)
                             return
                         try:
                             zip_path.unlink(missing_ok=True)
@@ -240,7 +257,9 @@ class IllustService(BaseService):
                             extra = "\n注意：部分作品图片下载失败，实际发送作品数少于已找到作品数。"
                         limit_notice = getattr(self, "_last_count_limit_notice", "") or ""
                         limit_text = f"{limit_notice}" if limit_notice else ""
-                        yield event.plain_result(f"下载完成：{work_count} 个作品，共 {image_count} 张图片。{limit_text}状态：{self.query.collect_end_reason_text()}。正在发送图片合并转发预览。需要 original ZIP 请发送 /pixivc_get_zip" + extra)
+                        msg = f"下载完成：{work_count} 个作品，共 {image_count} 张图片。{limit_text}状态：{self.query.collect_end_reason_text()}。正在发送图片合并转发预览。需要 original ZIP 请发送 /pixivc_get_zip" + extra
+                        self.debug.record_output(msg)
+                        yield event.plain_result(msg)
                         async for r in self.sender.dispatch_illust_result(event, base, zip_path, saved):
                             yield r
                         return
@@ -252,7 +271,9 @@ class IllustService(BaseService):
                             await self.auth.refresh_api_silent()
                             continue
                         logger.error(f"pixivc illust job failed: {e}", exc_info=True)
-                        yield event.plain_result(f"爬取失败：{e}")
+                        msg = f"爬取失败：{e}"
+                        self.debug.record_output(msg, kind="error")
+                        yield event.plain_result(msg)
                         return
             finally:
                 self._current_allow_r18 = None

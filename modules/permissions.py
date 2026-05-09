@@ -21,12 +21,6 @@ class PermissionService(BaseService):
         except Exception:
             return ""
 
-    def is_owner(self, event: AstrMessageEvent) -> bool:
-        try:
-            return bool(event.is_admin())
-        except Exception:
-            return str(getattr(event, "role", "") or "").strip().lower() == "admin"
-
     def load_r18_whitelist(self):
         data = read_json(R18_WHITELIST_FILE, {"qq_list": []})
         raw = data.get("qq_list", []) if isinstance(data, dict) else []
@@ -73,8 +67,6 @@ class PermissionService(BaseService):
             return False
 
     def is_bot_admin(self, event: AstrMessageEvent) -> bool:
-        if self.is_owner(event):
-            return True
         try:
             fn = getattr(event, "is_admin", None)
             if callable(fn):

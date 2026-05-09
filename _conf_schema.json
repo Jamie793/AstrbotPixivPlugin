@@ -2,7 +2,7 @@
   "refresh_token": {
     "description": "Pixiv Refresh Token（必填）",
     "type": "string",
-    "hint": "用于 Pixiv API 认证，必须填写。access_token 失效时会自动用它静默刷新；如刷新失败，请重新获取并更新。",
+    "hint": "Pixiv API 认证用。请勿泄露。",
     "default": "",
     "is_sensitive": true,
     "required": true
@@ -10,33 +10,39 @@
   "refresh_token_interval_hours": {
     "description": "Refresh Token 静默刷新间隔（小时）",
     "type": "int",
-    "hint": "插件开启时会按此间隔静默刷新 Refresh Token。单位为小时，默认 72 小时；设置为 0 可关闭定时刷新。",
+    "hint": "定时刷新认证的间隔。设为 0 关闭。",
     "default": 72,
     "min": 0,
     "max": 720
   },
+  "debug_enabled": {
+    "description": "调试模式",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后记录 API、输出和预览图文件状态。默认关闭。"
+  },
   "proxy": {
     "description": "代理地址",
     "type": "string",
-    "hint": "Pixiv 请求代理地址，例如 http://127.0.0.1:7890。留空时仅尝试使用环境变量代理。",
+    "hint": "Pixiv API 代理地址，留空则使用环境变量。",
     "default": ""
   },
   "use_image_proxy_without_proxy": {
     "description": "无代理时使用图片反代",
     "type": "bool",
     "default": true,
-    "hint": "当 proxy 为空时，下载 Pixiv 图片自动使用图片反代地址。只影响图片/封面下载，不影响 Pixiv API 请求。"
+    "hint": "未配置代理时，图片下载走反代。"
   },
   "image_proxy_host": {
     "description": "图片反代地址",
     "type": "string",
     "default": "https://i.pixiv.re",
-    "hint": "无代理下载图片时使用的反代地址。默认 https://i.pixiv.re，会把 https://i.pximg.net/... 转为 https://i.pixiv.re/...。"
+    "hint": "图片反代地址，仅影响图片下载。"
   },
   "default_count": {
     "description": "默认爬取作品数量",
     "type": "int",
-    "hint": "用户命令不填写数量时使用的默认作品数量。数量按作品统计，不按图片页数统计；多页作品会下载/发送该作品的多张图片。默认 20。",
+    "hint": "命令未指定数量时使用的作品数。",
     "default": 20,
     "min": 1,
     "max": 10000
@@ -44,7 +50,7 @@
   "max_count": {
     "description": "单次最大爬取作品数量",
     "type": "int",
-    "hint": "单次命令允许爬取的最大作品数量。数量按作品统计，不按图片页数统计；多页作品会下载/发送该作品的多张图片。实际数量受 Pixiv 返回、过滤条件、网络、平台发送限制和该配置影响。",
+    "hint": "单次命令允许请求的最大作品数。",
     "default": 100,
     "min": 1,
     "max": 10000
@@ -52,7 +58,7 @@
   "image_quality": {
     "description": "合并转发预览图片质量",
     "type": "string",
-    "hint": "仅控制合并转发/预览图片质量。命令数量按作品统计；如果作品包含多页，预览会发送该作品的多张图片。ZIP 固定使用 original 原图；需要 ZIP 时发送 /pixivc_get_zip。",
+    "hint": "预览图质量。ZIP 仍使用原图。",
     "default": "large",
     "options": [
       "medium",
@@ -64,31 +70,31 @@
     "description": "ZIP 文件加密发送",
     "type": "bool",
     "default": false,
-    "hint": "开启后，插件打包生成的 ZIP 会使用随机强密码 AES 加密，并在发送时提示解压密码。密码包含大小写字母、数字和符号。用于降低文件被他人直接窥视的风险。"
+    "hint": "开启后 ZIP 使用随机密码加密。"
   },
   "show_pack_progress": {
     "description": "显示打包进度日志",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_get_zip 打包 ZIP 时会输出正在打包的作品/小说 ID 和百分比进度；关闭后只输出 ZIP 生成和发送结果。"
+    "hint": "发送 ZIP 前显示打包进度。"
   },
   "allow_r18_group": {
     "description": "群聊是否允许 R18",
     "type": "bool",
-    "hint": "群聊 R18 总开关。关闭时群聊过滤 R18；开启后，bot 管理者默认允许，其他用户必须在 R18 白名单内。",
+    "hint": "群聊 R18 总开关。关闭则过滤。",
     "default": false
   },
   "allow_r18_private": {
     "description": "私聊是否允许 R18",
     "type": "bool",
-    "hint": "私聊 R18 总开关。关闭时私聊过滤 R18；开启后，bot 管理者默认允许，其他用户必须在 R18 白名单内。",
+    "hint": "私聊 R18 总开关。关闭则过滤。",
     "default": false
   },
   "allow_ai": {
     "description": "是否允许 AI 作品",
     "type": "bool",
     "default": true,
-    "hint": "是否允许 AI 作品。关闭后会过滤 Pixiv 标记为 AI 的作品。"
+    "hint": "是否允许 Pixiv 标记的 AI 作品。"
   },
   "min_bookmarks": {
     "description": "最小收藏数",
@@ -96,7 +102,7 @@
     "default": -1,
     "min": -1,
     "max": 100000000,
-    "hint": "默认 -1 为关闭过滤；设置为 0 或更大时启用最小收藏数过滤。"
+    "hint": "最低收藏数。-1 表示不限制。"
   },
   "min_views": {
     "description": "最小浏览数",
@@ -104,7 +110,7 @@
     "default": -1,
     "min": -1,
     "max": 100000000,
-    "hint": "默认 -1 为关闭过滤；设置为 0 或更大时启用最小浏览数过滤。"
+    "hint": "最低浏览数。-1 表示不限制。"
   },
   "min_likes": {
     "description": "最小点赞数",
@@ -112,12 +118,12 @@
     "default": -1,
     "min": -1,
     "max": 100000000,
-    "hint": "默认 -1 为关闭过滤；设置为 0 或更大时启用最小点赞数过滤。"
+    "hint": "最低点赞数。-1 表示不限制。"
   },
   "search_max_depth": {
     "description": "最大搜索深度",
     "type": "int",
-    "hint": "当作品数量不够时，会继续翻页/请求下一页尝试补足，直到达到命令请求的作品数量、Pixiv 没有下一页，或超过该最大搜索深度。默认 10。",
+    "hint": "最多翻页次数，用于补足结果。",
     "default": 10,
     "min": 1,
     "max": 10000
@@ -128,7 +134,7 @@
     "default": 3,
     "min": 1,
     "max": 8,
-    "hint": "并发下载图片/封面的数量。数值越大速度可能越快，但更容易触发网络或 Pixiv 限制。推荐 2-4。"
+    "hint": "图片下载并发数，建议 2-4。"
   },
   "request_timeout": {
     "description": "请求超时秒数",
@@ -136,31 +142,31 @@
     "default": 60,
     "min": 10,
     "max": 300,
-    "hint": "单个网络请求的超时时间，单位秒。网络慢或代理不稳定时可适当调大。"
+    "hint": "单个网络请求超时时间，单位秒。"
   },
   "download_dir": {
     "description": "下载缓存目录",
     "type": "string",
     "default": "data/downloads",
-    "hint": "图片、小说、ZIP 的临时下载缓存目录。相对路径会基于本插件目录解析。"
+    "hint": "图片、小说和 ZIP 的缓存目录。"
   },
   "include_info_txt": {
     "description": "ZIP 内包含 info.txt",
     "type": "bool",
     "default": true,
-    "hint": "ZIP 包内是否包含 info.txt。开启后 ZIP 里会保存作品标题、作者、链接、标签等信息。"
+    "hint": "ZIP 内是否生成作品信息文件。"
   },
   "clean_after_send": {
     "description": "发送后清理本次缓存",
     "type": "bool",
     "default": false,
-    "hint": "发送完成后是否清理本次下载缓存。开启可节省磁盘空间；关闭便于排查和保留文件。"
+    "hint": "发送完成后删除本次缓存。"
   },
   "auto_clean_enabled": {
     "description": "每日自动清空缓存",
     "type": "bool",
     "default": true,
-    "hint": "是否每天自动清空 Pixivc 下载缓存。开启后会清理所有图片、ZIP、临时目录，并重置最近 ZIP 记录。"
+    "hint": "是否启用每日自动清理缓存。"
   },
   "auto_clean_hour": {
     "description": "每日清理小时",
@@ -168,7 +174,7 @@
     "default": 4,
     "min": 0,
     "max": 23,
-    "hint": "每日自动清理的小时，24 小时制。默认 4 表示凌晨 04 点。"
+    "hint": "每日自动清理的小时。"
   },
   "auto_clean_minute": {
     "description": "每日清理分钟",
@@ -176,7 +182,7 @@
     "default": 0,
     "min": 0,
     "max": 59,
-    "hint": "每日自动清理的分钟。默认 0 表示整点清理。"
+    "hint": "每日自动清理的分钟。"
   },
   "max_zip_mb": {
     "description": "ZIP 最大大小 MB",
@@ -184,12 +190,12 @@
     "default": 200,
     "min": 1,
     "max": 2048,
-    "hint": "允许发送的 ZIP 最大体积，单位 MB。超过该大小会取消发送，避免文件过大。"
+    "hint": "允许发送的 ZIP 最大体积。"
   },
   "send_mode": {
     "description": "图片作品发送模式",
     "type": "string",
-    "hint": "图片搜索已固定为：搜索后只发送合并转发预览，不自动发送 ZIP；ZIP 会后台生成 original 原图包，发送 /pixivc_get_zip 才发送。此项保留兼容旧配置。",
+    "hint": "兼容旧配置。图片搜索固定发预览，ZIP 需手动获取。",
     "default": "forward",
     "options": [
       "zip",
@@ -210,7 +216,7 @@
       "only_images",
       "info_and_images"
     ],
-    "hint": "图片搜索预览使用合并转发。only_images：仅图片；info_and_images：图片和作品信息。none/auto/always 保留兼容旧配置，但当前图片搜索默认使用合并转发预览。"
+    "hint": "合并转发内容：仅图片或图片加信息。"
   },
   "forward_threshold": {
     "description": "自动转发阈值",
@@ -218,19 +224,19 @@
     "default": 5,
     "min": 1,
     "max": 20,
-    "hint": "自动转发阈值。forward_mode 为 auto 时，图片数量达到该值就自动改用合并转发，减少刷屏。"
+    "hint": "兼容旧配置，当前预览固定使用合并转发。"
   },
   "include_work_info": {
     "description": "发送时附带作品信息",
     "type": "bool",
     "default": true,
-    "hint": "逐张图片发送时是否附带作品信息。关闭后只发图片，不发标题、作者、链接等文字。"
+    "hint": "普通图片发送时是否附带作品信息。"
   },
   "include_tags": {
     "description": "作品信息包含标签",
     "type": "bool",
     "default": true,
-    "hint": "作品信息中是否显示标签。关闭后不会在作品信息里附带标签列表。"
+    "hint": "作品信息中是否显示标签。"
   },
   "max_tags_display": {
     "description": "最多显示标签数",
@@ -238,19 +244,19 @@
     "default": 20,
     "min": 0,
     "max": 100,
-    "hint": "作品信息最多显示多少个标签。设置为 0 时不显示标签内容。"
+    "hint": "最多显示的标签数量。0 表示不显示。"
   },
   "include_caption": {
     "description": "作品信息包含简介/说明",
     "type": "bool",
     "default": true,
-    "hint": "作品信息中是否显示简介/说明。关闭后不会显示 Pixiv 作品简介。"
+    "hint": "作品信息中是否显示简介。"
   },
   "novel_enabled": {
     "description": "启用小说命令",
     "type": "bool",
     "default": true,
-    "hint": "是否启用 Pixiv 小说相关命令。关闭后小说搜索、小说 ID 下载等命令不可用。"
+    "hint": "是否启用小说相关命令。"
   },
   "novel_send_mode": {
     "description": "小说发送模式",
@@ -262,7 +268,7 @@
       "zip",
       "forward"
     ],
-    "hint": "小说发送方式。text：直接发送正文片段；txt_file：发送 txt 文件；zip：打包小说和封面；forward：合并转发发送小说信息。"
+    "hint": "小说发送方式：ZIP、文本、文件或转发。"
   },
   "novel_text_max_chars": {
     "description": "小说 text 模式最大字符数",
@@ -270,7 +276,7 @@
     "default": 3000,
     "min": 500,
     "max": 20000,
-    "hint": "小说 text 模式最多发送的正文字符数。过大可能刷屏或被平台截断。"
+    "hint": "单条小说文本最多发送字符数。"
   },
   "novel_preview_max_chars": {
     "description": "小说预览最大字符数",
@@ -278,7 +284,7 @@
     "default": 500,
     "min": 50,
     "max": 10000,
-    "hint": "小说合并转发预览中每篇正文最多显示的字符数。默认 500 字。实际预览取正文前一半，但不会超过该值。"
+    "hint": "单篇小说预览最多字符数。"
   },
   "novel_preview_total_chars": {
     "description": "小说预览总字符预算",
@@ -286,7 +292,7 @@
     "default": 1800,
     "min": 200,
     "max": 20000,
-    "hint": "一次小说合并转发中所有正文预览的总字符上限。超过后，后面的小说只显示信息，不显示正文预览，避免转发内容过长。"
+    "hint": "一次转发中小说预览总字符上限。"
   },
   "novel_split_chars": {
     "description": "小说转发切分字符数",
@@ -294,19 +300,19 @@
     "default": 1500,
     "min": 500,
     "max": 5000,
-    "hint": "小说转发或文本处理时的切分字符数。数值越小分段越多，数值越大单段越长。"
+    "hint": "小说文本分段字符数。"
   },
   "include_novel_cover": {
     "description": "小说 ZIP 包含封面",
     "type": "bool",
     "default": true,
-    "hint": "小说 ZIP 中是否包含封面图。开启后会尝试下载并打包小说封面。"
+    "hint": "小说信息中是否包含封面。"
   },
   "include_novel_info": {
     "description": "小说发送附带信息",
     "type": "bool",
     "default": true,
-    "hint": "小说发送时是否附带小说信息。包括标题、作者、链接、标签、简介等。"
+    "hint": "小说预览中是否显示作品信息。"
   },
   "tag_search_target": {
     "description": "标签搜索方式",
@@ -316,7 +322,7 @@
       "partial_match_for_tags",
       "exact_match_for_tags"
     ],
-    "hint": "标签搜索匹配方式。partial_match_for_tags：标签部分匹配；exact_match_for_tags：标签精确匹配。"
+    "hint": "标签搜索方式，通常保持默认。"
   },
   "keyword_search_target": {
     "description": "关键词搜索方式",
@@ -327,78 +333,78 @@
       "exact_match_for_tags",
       "title_and_caption"
     ],
-    "hint": "关键词搜索匹配方式。partial_match_for_tags：标签部分匹配；exact_match_for_tags：标签精确匹配；title_and_caption：标题和简介匹配。"
+    "hint": "关键词搜索方式，通常保持默认。"
   },
   "and_filter_strict": {
     "description": "AND 搜索本地严格校验",
     "type": "bool",
     "default": true,
-    "hint": "AND 搜索是否进行本地严格校验。开启后会确保结果同时包含所有关键词/标签，结果更准但可能更少。"
+    "hint": "多关键词 AND 搜索时启用本地严格过滤。"
   },
   "or_merge_dedupe": {
     "description": "OR 搜索合并去重",
     "type": "bool",
     "default": true,
-    "hint": "OR 搜索是否合并去重。开启后会把多个关键词结果合并，并按作品 ID 去重。"
+    "hint": "多关键词 OR 搜索时合并并去重。"
   },
   "admin_discovery": {
     "description": "推荐作品需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_discovery 只有 bot 管理者可用；关闭后普通用户也可用。"
+    "hint": "开启后发现页命令仅管理员可用。"
   },
   "admin_bookmark": {
     "description": "收藏/取消收藏需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_bookmark_add 和 /pixivc_bookmark_del 只有 bot 管理者可用；关闭后普通用户也可操作当前 Pixiv 账号收藏，谨慎关闭。"
+    "hint": "开启后收藏/取消收藏仅管理员可用。"
   },
   "admin_bookmarks": {
     "description": "我的收藏列表需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_bookmarks 只有 bot 管理者可用；关闭后普通用户也可查看当前 Pixiv 账号收藏。"
+    "hint": "开启后查看收藏仅管理员可用。"
   },
   "admin_follow": {
     "description": "关注/取关作者需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_follow_add 和 /pixivc_follow_del 只有 bot 管理者可用；关闭后普通用户也可操作当前 Pixiv 账号关注，谨慎关闭。"
+    "hint": "开启后关注/取关仅管理员可用。"
   },
   "admin_following": {
     "description": "关注列表需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_following 只有 bot 管理者可用；关闭后普通用户也可查看当前 Pixiv 账号关注列表。"
+    "hint": "开启后查看关注列表仅管理员可用。"
   },
   "admin_follow_latest": {
     "description": "已关注动态需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_follow_latest 只有 bot 管理者可用；关闭后普通用户也可查看关注作者最新作品。"
+    "hint": "开启后关注用户新作仅管理员可用。"
   },
   "admin_recommended_users": {
     "description": "推荐作者列表需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_recommended_users 只有 bot 管理者可用；关闭后普通用户也可查看推荐作者列表。"
+    "hint": "开启后推荐用户仅管理员可用。"
   },
   "admin_novel_recommended": {
     "description": "推荐小说需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_novel_recommended 只有 bot 管理者可用；关闭后普通用户也可用。支持 page 参数指定起始页。"
+    "hint": "开启后小说推荐仅管理员可用。"
   },
   "admin_clean": {
     "description": "清理缓存需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_clean 只有 bot 管理者可用；关闭后普通用户也可清理 Pixivc 缓存。"
+    "hint": "开启后清理缓存仅管理员可用。"
   },
   "admin_r18_manage": {
     "description": "R18 白名单管理需要 Admin",
     "type": "bool",
     "default": true,
-    "hint": "开启后 /pixivc_r18_add、/pixivc_r18_del、/pixivc_r18_list 只有 bot 管理者可用；关闭后普通用户也可管理 R18 白名单，不建议关闭。"
+    "hint": "开启后 R18 白名单管理仅管理员可用。"
   }
 }

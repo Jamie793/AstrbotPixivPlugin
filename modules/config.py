@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from .base import BaseService
-from .paths import DATA_DIR
+from .paths import DATA_DIR, PLUGIN_DIR
 
 class ConfigService(BaseService):
     def cfg(self):
@@ -12,7 +12,8 @@ class ConfigService(BaseService):
         download_dir = str(self.config.get("download_dir", "data/downloads") or "data/downloads")
         dl_path = Path(download_dir)
         if not dl_path.is_absolute():
-            dl_path = DATA_DIR / dl_path
+            # 相对路径以插件目录为基准，也就是 metadata.yaml 所在目录。
+            dl_path = PLUGIN_DIR / dl_path
         admin_permissions = self.config.get("admin_permissions") or {}
 
         def admin_perm(key: str, default: bool = True) -> bool:
@@ -21,6 +22,7 @@ class ConfigService(BaseService):
         return {
             "refresh_token": str(self.config.get("refresh_token") or "").strip(),
             "refresh_token_interval_hours": max(0, int(self.config.get("refresh_token_interval_hours", 72) or 72)),
+            "debug_enabled": bool(self.config.get("debug_enabled", False)),
             "proxy": proxy,
             "use_image_proxy_without_proxy": bool(self.config.get("use_image_proxy_without_proxy", True)),
             "image_proxy_host": str(self.config.get("image_proxy_host", "https://i.pixiv.re") or "https://i.pixiv.re").rstrip("/"),
