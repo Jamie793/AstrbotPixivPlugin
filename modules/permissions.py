@@ -1,34 +1,8 @@
-import asyncio
-import base64
-import html
-import json
-import os
 import re
-import secrets
-import shutil
-import string
-import time
-import zipfile
-from datetime import datetime, timedelta
-from pathlib import Path
-
-import aiohttp
-from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
-from pixivpy3 import AppPixivAPI, ByPassSniApi
-
 from .base import BaseService
-
-try:
-    import pyzipper
-except Exception:
-    pyzipper = None
-
 from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
-from .errors import PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE, PixivRefreshTokenInvalidError
-from .help import build_help_text as build_pixivc_help_text
-from .oauth import generate_login_url, exchange_token, token_parts
 from .pixiv_utils import (
     build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
     getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
@@ -108,7 +82,7 @@ class PermissionService(BaseService):
         return False
 
     def allow_r18_for_event(self, event: AstrMessageEvent) -> bool:
-        c = self.cfg()
+        c = self.config_service.cfg()
         switch_on = c["allow_r18_group"] if self.is_group_event(event) else c["allow_r18_private"]
         if not switch_on:
             return False
@@ -154,7 +128,7 @@ class PermissionService(BaseService):
         return self.r18_query_denied_text()
 
     def pass_filter(self, item, kind="illust"):
-        c = self.cfg()
+        c = self.config_service.cfg()
         allow_r18 = self._current_allow_r18 if self._current_allow_r18 is not None else False
         if not allow_r18 and is_r18(item):
             return False
@@ -169,7 +143,7 @@ class PermissionService(BaseService):
         return True
 
     def filter_reason(self, item, kind="illust"):
-        c = self.cfg()
+        c = self.config_service.cfg()
         allow_r18 = self._current_allow_r18 if self._current_allow_r18 is not None else False
         if not allow_r18 and is_r18(item):
             return "r18"
@@ -184,7 +158,7 @@ class PermissionService(BaseService):
         return "pass"
 
     def require_admin_feature(self, event: AstrMessageEvent, key: str) -> bool:
-        c = self.cfg()
+        c = self.config_service.cfg()
         if not bool(c.get(key, True)):
             return True
         return self.is_bot_admin(event)

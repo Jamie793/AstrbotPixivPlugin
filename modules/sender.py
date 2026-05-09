@@ -1,34 +1,11 @@
 import asyncio
 import base64
-import html
-import json
-import os
-import re
-import secrets
 import shutil
-import string
-import time
-import zipfile
-from datetime import datetime, timedelta
 from pathlib import Path
-
-import aiohttp
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
-from pixivpy3 import AppPixivAPI, ByPassSniApi
-
 from .base import BaseService
-
-try:
-    import pyzipper
-except Exception:
-    pyzipper = None
-
-from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
-from .errors import PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE, PixivRefreshTokenInvalidError
-from .help import build_help_text as build_pixivc_help_text
-from .oauth import generate_login_url, exchange_token, token_parts
 from .pixiv_utils import (
     build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
     getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
@@ -39,13 +16,13 @@ from .pixiv_utils import (
 
 class SenderService(BaseService):
     async def send_zip(self, event: AstrMessageEvent, zip_path: Path, suppress_ready: bool = False):
-        c = self.cfg()
+        c = self.config_service.cfg()
         size = zip_path.stat().st_size
-        size_text = self.format_size(size)
+        size_text = self.cache.format_size(size)
         if size > c["max_zip_mb"] * 1024 * 1024:
             yield event.plain_result(f"ZIP 大小 {size_text}，超过限制 {c['max_zip_mb']}MB，已取消发送。")
             return
-        password = self.pop_zip_password()
+        password = self.downloader.pop_zip_password()
         if not suppress_ready:
             if password:
                 yield event.plain_result(f"ZIP 已生成：{zip_path.name}，大小 {size_text}，已加密。解压密码：【{password}】。正在发送文件……")
@@ -69,7 +46,7 @@ class SenderService(BaseService):
                 yield event.plain_result(f"ZIP 文件发送失败：本地路径发送失败：{e1}；base64 发送失败：{e2}")
 
     async def send_images(self, event, saved):
-        c = self.cfg()
+        c = self.config_service.cfg()
         for p, item, idx, total in saved:
             comps = [Image.fromFileSystem(str(p))]
             if c["include_work_info"]:
@@ -78,7 +55,7 @@ class SenderService(BaseService):
             await asyncio.sleep(0.2)
 
     async def send_forward(self, event, saved, novel_infos=None):
-        c = self.cfg()
+        c = self.config_service.cfg()
         batch_size = 20
         if novel_infos is not None:
             all_infos = list(novel_infos or [])
@@ -122,7 +99,7 @@ class SenderService(BaseService):
         return item
 
     async def dispatch_illust_result(self, event, base, zip_path, saved):
-        c = self.cfg()
+        c = self.config_service.cfg()
         # 图片搜索默认只发送合并转发预览，不自动生成/发送 ZIP。
         preview_saved = saved
         async for r in self.send_forward(event, preview_saved):
@@ -131,7 +108,7 @@ class SenderService(BaseService):
             shutil.rmtree(base, ignore_errors=True)
 
     async def dispatch_novel_result(self, event, base, zip_path, files, infos):
-        c = self.cfg()
+        c = self.config_service.cfg()
         mode = c["novel_send_mode"]
         if mode == "zip":
             async for r in self.send_zip(event, zip_path):
@@ -157,7 +134,7 @@ class SenderService(BaseService):
                 pass
 
     async def build_novel_preview_infos(self, items):
-        c = self.cfg()
+        c = self.config_service.cfg()
         infos = []
         total = max(1, len(items))
         used_preview_chars = 0
@@ -173,7 +150,7 @@ class SenderService(BaseService):
             text = ""
             if nid:
                 try:
-                    text = await self.fetch_novel_text(nid)
+                    text = await self.novel.fetch_novel_text(nid)
                 except Exception as e:
                     logger.warning(f"pixivc novel preview text failed {nid}: {e}")
                     text = ""

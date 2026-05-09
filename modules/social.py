@@ -1,34 +1,4 @@
-import asyncio
-import base64
-import html
-import json
-import os
-import re
-import secrets
-import shutil
-import string
-import time
-import zipfile
-from datetime import datetime, timedelta
-from pathlib import Path
-
-import aiohttp
-from astrbot.api import logger
-from astrbot.api.event import AstrMessageEvent
-from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
-from pixivpy3 import AppPixivAPI, ByPassSniApi
-
 from .base import BaseService
-
-try:
-    import pyzipper
-except Exception:
-    pyzipper = None
-
-from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
-from .errors import PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE, PixivRefreshTokenInvalidError
-from .help import build_help_text as build_pixivc_help_text
-from .oauth import generate_login_url, exchange_token, token_parts
 from .pixiv_utils import (
     build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
     getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
@@ -39,24 +9,24 @@ from .pixiv_utils import (
 
 class SocialService(BaseService):
     async def _get_api_user_id(self):
-        api = await self.api()
+        api = await self.auth.api()
         try:
             return int(getattr(api, "user_id", None) or 0)
         except Exception:
             return 0
 
     async def collect_paginated_users(self, method_name: str, count: int, *args, **kwargs):
-        api = await self.api()
-        c = self.cfg()
+        api = await self.auth.api()
+        c = self.config_service.cfg()
         users = []
         next_qs = None
-        max_pages = self.effective_search_max_depth()
-        start_page = self.effective_start_page()
+        max_pages = self.query.effective_search_max_depth()
+        start_page = self.query.effective_start_page()
         for page in range(max_pages + start_page - 1):
             if next_qs:
-                resp = await self.api_call(method_name, **next_qs)
+                resp = await self.auth.api_call(method_name, **next_qs)
             else:
-                resp = await self.api_call(method_name, *args, **kwargs)
+                resp = await self.auth.api_call(method_name, *args, **kwargs)
             current_page = page + 1
             if current_page >= start_page:
                 users += self.extract_users(resp)

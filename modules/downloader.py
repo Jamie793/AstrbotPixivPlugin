@@ -1,34 +1,16 @@
 import asyncio
-import base64
-import html
-import json
-import os
-import re
 import secrets
-import shutil
 import string
 import time
 import zipfile
-from datetime import datetime, timedelta
 from pathlib import Path
-
 import aiohttp
 from astrbot.api import logger
-from astrbot.api.event import AstrMessageEvent
-from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
-from pixivpy3 import AppPixivAPI, ByPassSniApi
-
-from .base import BaseService
-
 try:
     import pyzipper
-except Exception:
+except ImportError:
     pyzipper = None
-
-from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
-from .errors import PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE, PixivRefreshTokenInvalidError
-from .help import build_help_text as build_pixivc_help_text
-from .oauth import generate_login_url, exchange_token, token_parts
+from .base import BaseService
 from .pixiv_utils import (
     build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
     getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
@@ -39,7 +21,7 @@ from .pixiv_utils import (
 
 class DownloaderService(BaseService):
     def convert_image_proxy_url(self, url: str, proxy=None) -> str:
-        c = self.cfg()
+        c = self.config_service.cfg()
         if proxy or not c["use_image_proxy_without_proxy"]:
             return url
         host = c["image_proxy_host"].rstrip("/")
@@ -57,7 +39,11 @@ class DownloaderService(BaseService):
         async with session.get(url, headers=headers, proxy=proxy or None, timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
             if resp.status != 200:
                 raise RuntimeError(f"HTTP {resp.status}")
-            path.write_bytes(await resp.read())
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("wb") as f:
+                async for chunk in resp.content.iter_chunked(1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
 
     def generate_zip_password(self, length=16) -> str:
         lowers = string.ascii_lowercase
@@ -76,7 +62,7 @@ class DownloaderService(BaseService):
         return "".join(chars)
 
     def new_zip_writer(self, zip_path: Path):
-        if not self.cfg().get("encrypt_zip_enabled", bool(self.config.get("encrypt_zip_enabled", False))):
+        if not self.config_service.cfg().get("encrypt_zip_enabled", bool(self.config.get("encrypt_zip_enabled", False))):
             return zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED), ""
         if pyzipper is None:
             raise RuntimeError("已开启 ZIP 加密，但缺少依赖 pyzipper，请安装 requirements.txt 后重启插件。")
@@ -94,7 +80,7 @@ class DownloaderService(BaseService):
         return password
 
     async def prepare_illust_files(self, items, label="pixivs", progress_cb=None, make_zip=True):
-        c = self.cfg()
+        c = self.config_service.cfg()
         ts = time.strftime("%Y%m%d_%H%M%S")
         base = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}"
         img_dir = base / "images"
@@ -170,7 +156,7 @@ class DownloaderService(BaseService):
                 self.config["image_quality"] = old_quality
 
     async def prepare_novel_files(self, items, label="pixivc_novel", progress_cb=None):
-        c = self.cfg()
+        c = self.config_service.cfg()
         ts = time.strftime("%Y%m%d_%H%M%S")
         base = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}"
         novel_dir = base / "novels"
@@ -186,7 +172,7 @@ class DownloaderService(BaseService):
                 title = safe_filename(getv(item, "title", "untitled"), 60)
                 info = build_novel_info(item, c["include_tags"], c["max_tags_display"], c["include_caption"])
                 infos.append(info)
-                text = await self.fetch_novel_text(nid)
+                text = await self.novel.fetch_novel_text(nid)
                 txt_path = novel_dir / f"{nid}_{title}.txt"
                 txt_path.write_text(info + "\n\n" + (text or "小说正文获取失败或为空"), encoding="utf-8")
                 files.append((txt_path, item, text))
@@ -254,7 +240,7 @@ class DownloaderService(BaseService):
         queue = asyncio.Queue()
 
         async def progress_cb(iid, idx=None, total_count=None):
-            if not self.cfg().get("show_pack_progress", True):
+            if not self.config_service.cfg().get("show_pack_progress", True):
                 return
             iid = str(iid or "").strip()
             if not iid or iid in seen:

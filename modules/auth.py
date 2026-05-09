@@ -1,40 +1,12 @@
 import asyncio
-import base64
-import html
 import json
 import os
-import re
-import secrets
-import shutil
-import string
 import time
-import zipfile
-from datetime import datetime, timedelta
-from pathlib import Path
-
-import aiohttp
 from astrbot.api import logger
-from astrbot.api.event import AstrMessageEvent
-from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
 from pixivpy3 import AppPixivAPI, ByPassSniApi
-
 from .base import BaseService
-
-try:
-    import pyzipper
-except Exception:
-    pyzipper = None
-
 from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
 from .errors import PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE, PixivRefreshTokenInvalidError
-from .help import build_help_text as build_pixivc_help_text
-from .oauth import generate_login_url, exchange_token, token_parts
-from .pixiv_utils import (
-    build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
-    getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
-    read_json, safe_filename, searchable_text, split_terms, stat_value, tags_text,
-    to_int, unique_items, user_info, write_json,
-)
 
 
 class AuthService(BaseService):
@@ -113,16 +85,24 @@ class AuthService(BaseService):
         except Exception as e:
             logger.error(f"Pixivc 写回新的 Refresh Token 失败：{type(e).__name__}: {e}")
 
+    def get_refresh_token(self) -> str:
+        config_token = str(self.config.get("refresh_token") or "").strip()
+        if config_token:
+            return config_token
+        state_token = str(self.load_token_state().get("refresh_token") or "").strip()
+        return state_token
+
     async def refresh_token_keepalive_loop(self):
         """插件开启状态下定时静默认证，避免 refresh_token 长期未使用。"""
         startup_delay = 60
         while True:
             try:
                 await asyncio.sleep(startup_delay)
-                c = self.cfg()
+                c = self.config_service.cfg()
                 interval_seconds = max(3600, int(c["refresh_token_interval_hours"] * 3600))
                 startup_delay = interval_seconds
-                if not c["refresh_token"]:
+                refresh_token = self.get_refresh_token()
+                if not refresh_token:
                     logger.warning("Pixivc Refresh Token 静默刷新跳过：未配置 refresh_token。")
                     continue
                 logger.info("Pixivc Refresh Token 静默刷新开始。")
@@ -143,15 +123,16 @@ class AuthService(BaseService):
             return AppPixivAPI()
 
     async def api(self):
-        c = self.cfg()
-        if not c["refresh_token"]:
+        c = self.config_service.cfg()
+        refresh_token = self.get_refresh_token()
+        if not refresh_token:
             raise RuntimeError("未配置 Pixiv refresh_token，请在本插件设置中填写。")
         async with self._auth_lock:
             if self._api is None:
                 self._api = self.create_api(c["proxy"])
                 if not self.restore_token_state_to_api(self._api):
                     try:
-                        await asyncio.to_thread(self._api.auth, refresh_token=c["refresh_token"])
+                        await asyncio.to_thread(self._api.auth, refresh_token=refresh_token)
                     except Exception as e:
                         logger.warning(f"Pixivc 初次认证失败：{type(e).__name__}: {e}")
                         raise PixivRefreshTokenInvalidError(PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE) from e
@@ -180,14 +161,15 @@ class AuthService(BaseService):
         return str(e)
 
     async def refresh_api_silent(self, reason: str = "access_token_expired"):
-        c = self.cfg()
-        if not c["refresh_token"]:
+        c = self.config_service.cfg()
+        refresh_token = self.get_refresh_token()
+        if not refresh_token:
             raise PixivRefreshTokenInvalidError(PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE)
         async with self._auth_lock:
             logger.info(f"Pixivc 正在后台静默刷新认证，reason={reason}。")
             self._api = self.create_api(c["proxy"])
             try:
-                await asyncio.to_thread(self._api.auth, refresh_token=c["refresh_token"])
+                await asyncio.to_thread(self._api.auth, refresh_token=refresh_token)
             except Exception as e:
                 logger.warning(f"Pixivc 使用 Refresh Token 刷新认证失败：{type(e).__name__}: {e}")
                 raise PixivRefreshTokenInvalidError(PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE) from e

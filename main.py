@@ -5,7 +5,7 @@ from pathlib import Path
 
 try:
     import pyzipper
-except Exception:
+except ImportError:
     pyzipper = None
 
 from astrbot.api import logger
@@ -58,303 +58,111 @@ class PixivcCrawlerPlugin(Star):
         self.social = SocialService(self)
         self.misc = MiscService(self)
 
-    def _collect_illust_detail(self, *args, **kwargs):
-        return self.illust._collect_illust_detail(*args, **kwargs)
 
-    def _collect_my_bookmarks(self, *args, **kwargs):
-        return self.illust._collect_my_bookmarks(*args, **kwargs)
 
-    def _collect_my_following(self, *args, **kwargs):
-        return self.illust._collect_my_following(*args, **kwargs)
 
-    def _get_api_user_id(self, *args, **kwargs):
-        return self.social._get_api_user_id(*args, **kwargs)
 
-    def _looks_auth_failed(self, *args, **kwargs):
-        return self.auth._looks_auth_failed(*args, **kwargs)
 
-    def _plain_item(self, *args, **kwargs):
-        return self.sender._plain_item(*args, **kwargs)
 
-    def admin_denied_text(self, *args, **kwargs):
-        return self.permissions.admin_denied_text(*args, **kwargs)
 
-    def admin_mark(self, *args, **kwargs):
-        return self.misc.admin_mark(*args, **kwargs)
 
-    def allow_r18_for_event(self, *args, **kwargs):
-        return self.permissions.allow_r18_for_event(*args, **kwargs)
 
-    def and_match(self, *args, **kwargs):
-        return self.query.and_match(*args, **kwargs)
 
-    def api(self, *args, **kwargs):
-        return self.auth.api(*args, **kwargs)
 
-    def api_call(self, *args, **kwargs):
-        return self.auth.api_call(*args, **kwargs)
 
-    def api_no_auth_requests_call(self, *args, **kwargs):
-        return self.auth.api_no_auth_requests_call(*args, **kwargs)
 
-    def api_requests_call(self, *args, **kwargs):
-        return self.auth.api_requests_call(*args, **kwargs)
 
-    def auto_clean_loop(self, *args, **kwargs):
-        return self.cache.auto_clean_loop(*args, **kwargs)
 
-    def build_help_text(self, *args, **kwargs):
-        return self.misc.build_help_text(*args, **kwargs)
 
-    def build_novel_preview_infos(self, *args, **kwargs):
-        return self.sender.build_novel_preview_infos(*args, **kwargs)
 
-    def cfg(self, *args, **kwargs):
-        return self.config_service.cfg(*args, **kwargs)
 
-    def clean_download_cache(self, *args, **kwargs):
-        return self.cache.clean_download_cache(*args, **kwargs)
 
-    def collect_and_or(self, *args, **kwargs):
-        return self.illust.collect_and_or(*args, **kwargs)
 
-    def collect_discovery(self, *args, **kwargs):
-        return self.illust.collect_discovery(*args, **kwargs)
 
-    def collect_end_reason_text(self, *args, **kwargs):
-        return self.query.collect_end_reason_text(*args, **kwargs)
 
-    def collect_page_search(self, *args, **kwargs):
-        return self.illust.collect_page_search(*args, **kwargs)
 
-    def collect_paginated_illust(self, *args, **kwargs):
-        return self.illust.collect_paginated_illust(*args, **kwargs)
 
-    def collect_paginated_novel(self, *args, **kwargs):
-        return self.novel.collect_paginated_novel(*args, **kwargs)
 
-    def collect_paginated_users(self, *args, **kwargs):
-        return self.social.collect_paginated_users(*args, **kwargs)
 
-    def collect_rank(self, *args, **kwargs):
-        return self.illust.collect_rank(*args, **kwargs)
 
-    def collect_user(self, *args, **kwargs):
-        return self.illust.collect_user(*args, **kwargs)
 
-    def configured_cache_dir_text(self, *args, **kwargs):
-        return self.cache.configured_cache_dir_text(*args, **kwargs)
 
-    def contains_r18_query(self, *args, **kwargs):
-        return self.permissions.contains_r18_query(*args, **kwargs)
 
-    def convert_image_proxy_url(self, *args, **kwargs):
-        return self.downloader.convert_image_proxy_url(*args, **kwargs)
 
-    def create_api(self, *args, **kwargs):
-        return self.auth.create_api(*args, **kwargs)
 
-    def debug_resp_keys(self, *args, **kwargs):
-        return self.query.debug_resp_keys(*args, **kwargs)
 
-    def dispatch_illust_result(self, *args, **kwargs):
-        return self.sender.dispatch_illust_result(*args, **kwargs)
 
-    def dispatch_novel_result(self, *args, **kwargs):
-        return self.sender.dispatch_novel_result(*args, **kwargs)
 
-    def download_url(self, *args, **kwargs):
-        return self.downloader.download_url(*args, **kwargs)
 
-    def effective_search_max_depth(self, *args, **kwargs):
-        return self.query.effective_search_max_depth(*args, **kwargs)
 
-    def effective_start_page(self, *args, **kwargs):
-        return self.query.effective_start_page(*args, **kwargs)
 
-    def extract_first_illust(self, *args, **kwargs):
-        return self.illust.extract_first_illust(*args, **kwargs)
 
-    def extract_qq_arg(self, *args, **kwargs):
-        return self.permissions.extract_qq_arg(*args, **kwargs)
 
-    def extract_users(self, *args, **kwargs):
-        return self.social.extract_users(*args, **kwargs)
 
-    def fetch_novel_text(self, *args, **kwargs):
-        return self.novel.fetch_novel_text(*args, **kwargs)
 
-    def filter_reason(self, *args, **kwargs):
-        return self.permissions.filter_reason(*args, **kwargs)
 
-    def first_at_qq(self, *args, **kwargs):
-        return self.permissions.first_at_qq(*args, **kwargs)
 
-    def format_autocomplete(self, *args, **kwargs):
-        return self.misc.format_autocomplete(*args, **kwargs)
 
-    def format_cache_list(self, *args, **kwargs):
-        return self.cache.format_cache_list(*args, **kwargs)
 
-    def format_size(self, *args, **kwargs):
-        return self.cache.format_size(*args, **kwargs)
 
-    def format_trending_tags(self, *args, **kwargs):
-        return self.social.format_trending_tags(*args, **kwargs)
 
-    def format_users(self, *args, **kwargs):
-        return self.social.format_users(*args, **kwargs)
 
-    def generate_zip_password(self, *args, **kwargs):
-        return self.downloader.generate_zip_password(*args, **kwargs)
 
-    def is_bot_admin(self, *args, **kwargs):
-        return self.permissions.is_bot_admin(*args, **kwargs)
 
-    def is_group_event(self, *args, **kwargs):
-        return self.permissions.is_group_event(*args, **kwargs)
 
-    def is_owner(self, *args, **kwargs):
-        return self.permissions.is_owner(*args, **kwargs)
 
-    def is_r18_query_term(self, *args, **kwargs):
-        return self.permissions.is_r18_query_term(*args, **kwargs)
 
-    def load_last_items(self, *args, **kwargs):
-        return self.cache.load_last_items(*args, **kwargs)
 
-    def load_last_zip(self, *args, **kwargs):
-        return self.cache.load_last_zip(*args, **kwargs)
 
-    def load_r18_whitelist(self, *args, **kwargs):
-        return self.permissions.load_r18_whitelist(*args, **kwargs)
 
-    def load_token_state(self, *args, **kwargs):
-        return self.auth.load_token_state(*args, **kwargs)
 
-    def match_tag_filter(self, *args, **kwargs):
-        return self.query.match_tag_filter(*args, **kwargs)
 
-    def merge_tag_filters(self, *args, **kwargs):
-        return self.query.merge_tag_filters(*args, **kwargs)
 
-    def new_zip_writer(self, *args, **kwargs):
-        return self.downloader.new_zip_writer(*args, **kwargs)
 
-    def next_clean_time(self, *args, **kwargs):
-        return self.cache.next_clean_time(*args, **kwargs)
 
-    def parse_query_count(self, *args, **kwargs):
-        return self.query.parse_query_count(*args, **kwargs)
 
-    def parse_query_count_tags(self, *args, **kwargs):
-        return self.query.parse_query_count_tags(*args, **kwargs)
 
-    def pass_filter(self, *args, **kwargs):
-        return self.permissions.pass_filter(*args, **kwargs)
 
-    def path_total_size(self, *args, **kwargs):
-        return self.cache.path_total_size(*args, **kwargs)
 
-    def persist_rotated_refresh_token(self, *args, **kwargs):
-        return self.auth.persist_rotated_refresh_token(*args, **kwargs)
 
-    def pixiv_autocomplete(self, *args, **kwargs):
-        return self.misc.pixiv_autocomplete(*args, **kwargs)
 
-    def pop_zip_password(self, *args, **kwargs):
-        return self.downloader.pop_zip_password(*args, **kwargs)
 
-    def prepare_illust_files(self, *args, **kwargs):
-        return self.downloader.prepare_illust_files(*args, **kwargs)
 
-    def prepare_novel_files(self, *args, **kwargs):
-        return self.downloader.prepare_novel_files(*args, **kwargs)
 
-    def prepare_original_zip_from_items(self, *args, **kwargs):
-        return self.downloader.prepare_original_zip_from_items(*args, **kwargs)
 
-    def prepare_with_live_progress(self, *args, **kwargs):
-        return self.downloader.prepare_with_live_progress(*args, **kwargs)
 
-    def r18_query_denied_text(self, *args, **kwargs):
-        return self.permissions.r18_query_denied_text(*args, **kwargs)
 
-    def refresh_api_silent(self, *args, **kwargs):
-        return self.auth.refresh_api_silent(*args, **kwargs)
 
-    def refresh_token_keepalive_loop(self, *args, **kwargs):
-        return self.auth.refresh_token_keepalive_loop(*args, **kwargs)
 
-    def remember_zip_password(self, *args, **kwargs):
-        return self.downloader.remember_zip_password(*args, **kwargs)
 
-    def require_admin_feature(self, *args, **kwargs):
-        return self.permissions.require_admin_feature(*args, **kwargs)
 
-    def require_r18_query_allowed(self, *args, **kwargs):
-        return self.permissions.require_r18_query_allowed(*args, **kwargs)
 
-    def require_write_permission(self, *args, **kwargs):
-        return self.permissions.require_write_permission(*args, **kwargs)
 
-    def restore_token_state_to_api(self, *args, **kwargs):
-        return self.auth.restore_token_state_to_api(*args, **kwargs)
 
-    def run_illust_job(self, *args, **kwargs):
-        return self.illust.run_illust_job(*args, **kwargs)
 
-    def run_novel_job(self, *args, **kwargs):
-        return self.novel.run_novel_job(*args, **kwargs)
 
-    def save_last_items(self, *args, **kwargs):
-        return self.cache.save_last_items(*args, **kwargs)
 
-    def save_last_zip(self, *args, **kwargs):
-        return self.cache.save_last_zip(*args, **kwargs)
 
-    def save_r18_whitelist(self, *args, **kwargs):
-        return self.permissions.save_r18_whitelist(*args, **kwargs)
 
-    def save_token_state(self, *args, **kwargs):
-        return self.auth.save_token_state(*args, **kwargs)
 
-    def send_forward(self, *args, **kwargs):
-        return self.sender.send_forward(*args, **kwargs)
 
-    def send_images(self, *args, **kwargs):
-        return self.sender.send_images(*args, **kwargs)
 
-    def send_zip(self, *args, **kwargs):
-        return self.sender.send_zip(*args, **kwargs)
 
-    def sender_id(self, *args, **kwargs):
-        return self.permissions.sender_id(*args, **kwargs)
 
-    def set_collect_end_reason(self, *args, **kwargs):
-        return self.query.set_collect_end_reason(*args, **kwargs)
 
-    def set_debug_info(self, *args, **kwargs):
-        return self.query.set_debug_info(*args, **kwargs)
 
-    def split_include_exclude_tags(self, *args, **kwargs):
-        return self.query.split_include_exclude_tags(*args, **kwargs)
 
-    def user_facing_error(self, *args, **kwargs):
-        return self.auth.user_facing_error(*args, **kwargs)
 
-    def yield_pack_progress(self, *args, **kwargs):
-        return self.downloader.yield_pack_progress(*args, **kwargs)
 
     async def initialize(self):
-        c = self.cfg()
+        c = self.config_service.cfg()
         if c.get("encrypt_zip_enabled", False) and pyzipper is None:
             logger.warning("Pixivc 已开启 ZIP 加密，但缺少 pyzipper 依赖；请安装 requirements.txt 后重启插件。")
         if c["auto_clean_enabled"] and (self._clean_task is None or self._clean_task.done()):
-            self._clean_task = asyncio.create_task(self.auto_clean_loop())
+            self._clean_task = asyncio.create_task(self.cache.auto_clean_loop())
             logger.info(f"Pixivc 每日自动清理已启用：{c['auto_clean_hour']:02d}:{c['auto_clean_minute']:02d}")
         if c["refresh_token_interval_hours"] > 0 and (self._refresh_token_task is None or self._refresh_token_task.done()):
-            self._refresh_token_task = asyncio.create_task(self.refresh_token_keepalive_loop())
+            self._refresh_token_task = asyncio.create_task(self.auth.refresh_token_keepalive_loop())
             logger.info(f"Pixivc Refresh Token 静默刷新已启用：每 {c['refresh_token_interval_hours']} 小时。")
 
     async def terminate(self):
@@ -396,7 +204,7 @@ class PixivcCrawlerPlugin(Star):
 
     @filter.command("pixivc_help", alias={"pixivs帮助"})
     async def pixivc_help(self, event: AstrMessageEvent):
-        yield event.plain_result(self.build_help_text())
+        yield event.plain_result(self.misc.build_help_text())
 
 
     @filter.command("pixivc_auto")
@@ -407,15 +215,15 @@ class PixivcCrawlerPlugin(Star):
             return
         for attempt in range(2):
             try:
-                tags = await self.pixiv_autocomplete(q)
-                yield event.plain_result(self.format_autocomplete(tags, 20))
+                tags = await self.misc.pixiv_autocomplete(q)
+                yield event.plain_result(self.misc.format_autocomplete(tags, 20))
                 return
             except PixivRefreshTokenInvalidError as e:
                 yield event.plain_result(str(e))
                 return
             except Exception as e:
-                if attempt == 0 and self._looks_auth_failed(exc=e):
-                    await self.refresh_api_silent()
+                if attempt == 0 and self.auth._looks_auth_failed(exc=e):
+                    await self.auth.refresh_api_silent()
                     logger.info("Pixivc 已静默刷新 access token，正在自动重试本次自动补全命令。")
                     continue
                 logger.error(f"pixivc autocomplete failed: {e}", exc_info=True)
@@ -428,123 +236,123 @@ class PixivcCrawlerPlugin(Star):
         if not q.isdigit():
             yield event.plain_result("用法：/pixivc_illust_id 作品ID")
             return
-        async for r in self.run_illust_job(event, f"illust_{q}", lambda: self._collect_illust_detail(q)):
+        async for r in self.illust.run_illust_job(event, f"illust_{q}", lambda: self.illust._collect_illust_detail(q)):
             yield r
 
 
     @filter.command("pixivc_bookmark_add")
     async def pixivc_bookmark_add(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_bookmark"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_bookmark"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
         q = full_command_args(event, "pixivc_bookmark_add", args)
         if not q.isdigit():
             yield event.plain_result("用法：/pixivc_bookmark_add 作品ID")
             return
-        await self.api_call("illust_bookmark_add", int(q), restrict="public")
+        await self.auth.api_call("illust_bookmark_add", int(q), restrict="public")
         yield event.plain_result("已收藏作品。")
 
     @filter.command("pixivc_bookmark_del")
     async def pixivc_bookmark_del(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_bookmark"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_bookmark"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
         q = full_command_args(event, "pixivc_bookmark_del", args)
         if not q.isdigit():
             yield event.plain_result("用法：/pixivc_bookmark_del 作品ID")
             return
-        await self.api_call("illust_bookmark_delete", int(q))
+        await self.auth.api_call("illust_bookmark_delete", int(q))
         yield event.plain_result("已取消收藏作品。")
 
     @filter.command("pixivc_bookmarks")
     async def pixivc_bookmarks(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_bookmarks"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_bookmarks"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
-        _, count, tag_terms = self.parse_query_count_tags(full_command_args(event, "pixivc_bookmarks", args))
-        async for r in self.run_illust_job(event, "my_bookmarks", lambda: self._collect_my_bookmarks(count, tag_terms)):
+        _, count, tag_terms = self.query.parse_query_count_tags(full_command_args(event, "pixivc_bookmarks", args))
+        async for r in self.illust.run_illust_job(event, "my_bookmarks", lambda: self.illust._collect_my_bookmarks(count, tag_terms)):
             yield r
 
 
     @filter.command("pixivc_trending_tags")
     async def pixivc_trending_tags(self, event: AstrMessageEvent):
-        resp = await self.api_call("trending_tags_illust")
-        yield event.plain_result(self.format_trending_tags(resp, 30))
+        resp = await self.auth.api_call("trending_tags_illust")
+        yield event.plain_result(self.social.format_trending_tags(resp, 30))
 
     @filter.command("pixivc_related")
     async def pixivc_related(self, event: AstrMessageEvent, args: str = ""):
-        q, count, tag_terms = self.parse_query_count_tags(full_command_args(event, "pixivc_related", args))
+        q, count, tag_terms = self.query.parse_query_count_tags(full_command_args(event, "pixivc_related", args))
         if not q.isdigit():
             yield event.plain_result("用法：/pixivc_related 作品ID")
             return
-        async for r in self.run_illust_job(event, f"related_{q}", lambda: self.collect_paginated_illust("illust_related", count, int(q), tag_terms=tag_terms)):
+        async for r in self.illust.run_illust_job(event, f"related_{q}", lambda: self.illust.collect_paginated_illust("illust_related", count, int(q), tag_terms=tag_terms)):
             yield r
 
     @filter.command("pixivc_follow_add")
     async def pixivc_follow_add(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_follow"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_follow"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
         q = full_command_args(event, "pixivc_follow_add", args)
         if not q.isdigit():
             yield event.plain_result("用法：/pixivc_follow_add 用户ID")
             return
-        await self.api_call("user_follow_add", int(q), restrict="public")
+        await self.auth.api_call("user_follow_add", int(q), restrict="public")
         yield event.plain_result("已关注作者。")
 
     @filter.command("pixivc_follow_del")
     async def pixivc_follow_del(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_follow"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_follow"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
         q = full_command_args(event, "pixivc_follow_del", args)
         if not q.isdigit():
             yield event.plain_result("用法：/pixivc_follow_del 用户ID")
             return
-        await self.api_call("user_follow_delete", int(q))
+        await self.auth.api_call("user_follow_delete", int(q))
         yield event.plain_result("已取消关注作者。")
 
     @filter.command("pixivc_following")
     async def pixivc_following(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_following"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_following"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
-        _, count = self.parse_query_count(full_command_args(event, "pixivc_following", args))
-        users = await self._collect_my_following(count)
-        yield event.plain_result(self.format_users(users, count))
+        _, count = self.query.parse_query_count(full_command_args(event, "pixivc_following", args))
+        users = await self.illust._collect_my_following(count)
+        yield event.plain_result(self.social.format_users(users, count))
 
     @filter.command("pixivc_follow_latest")
     async def pixivc_follow_latest(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_follow_latest"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_follow_latest"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
-        _, count, tag_terms = self.parse_query_count_tags(full_command_args(event, "pixivc_follow_latest", args))
-        async for r in self.run_illust_job(event, "follow_latest", lambda: self.collect_paginated_illust("illust_follow", count, restrict="public", tag_terms=tag_terms)):
+        _, count, tag_terms = self.query.parse_query_count_tags(full_command_args(event, "pixivc_follow_latest", args))
+        async for r in self.illust.run_illust_job(event, "follow_latest", lambda: self.illust.collect_paginated_illust("illust_follow", count, restrict="public", tag_terms=tag_terms)):
             yield r
 
     @filter.command("pixivc_new")
     async def pixivc_new(self, event: AstrMessageEvent, args: str = ""):
-        _, count, tag_terms = self.parse_query_count_tags(full_command_args(event, "pixivc_new", args))
-        async for r in self.run_illust_job(event, "new", lambda: self.collect_paginated_illust("illust_new", count, content_type="illust", tag_terms=tag_terms)):
+        _, count, tag_terms = self.query.parse_query_count_tags(full_command_args(event, "pixivc_new", args))
+        async for r in self.illust.run_illust_job(event, "new", lambda: self.illust.collect_paginated_illust("illust_new", count, content_type="illust", tag_terms=tag_terms)):
             yield r
 
     @filter.command("pixivc_recommended_users")
     async def pixivc_recommended_users(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_recommended_users"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_recommended_users"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
-        _, count = self.parse_query_count(full_command_args(event, "pixivc_recommended_users", args))
-        users = await self.collect_paginated_users("user_recommended", count)
-        yield event.plain_result(self.format_users(users, count))
+        _, count = self.query.parse_query_count(full_command_args(event, "pixivc_recommended_users", args))
+        users = await self.social.collect_paginated_users("user_recommended", count)
+        yield event.plain_result(self.social.format_users(users, count))
 
     @filter.command("pixivc_user_search")
     async def pixivc_user_search(self, event: AstrMessageEvent, args: str = ""):
-        q, count = self.parse_query_count(full_command_args(event, "pixivc_user_search", args))
+        q, count = self.query.parse_query_count(full_command_args(event, "pixivc_user_search", args))
         if not q:
             yield event.plain_result("用法：/pixivc_user_search 关键词")
             return
-        users = await self.collect_paginated_users("search_user", count, q)
-        yield event.plain_result(self.format_users(users, count))
+        users = await self.social.collect_paginated_users("search_user", count, q)
+        yield event.plain_result(self.social.format_users(users, count))
 
     @filter.command("pixivc_debug_last")
     async def pixivc_debug_last(self, event: AstrMessageEvent):
@@ -552,7 +360,7 @@ class PixivcCrawlerPlugin(Star):
 
     @filter.command("pixivc_status")
     async def pixivc_status(self, event: AstrMessageEvent):
-        c = self.cfg()
+        c = self.config_service.cfg()
         yield event.plain_result(
             "Pixivc 状态：\n"
             f"refresh_token：{'已设置' if c['refresh_token'] else '未设置'}\n"
@@ -567,7 +375,7 @@ class PixivcCrawlerPlugin(Star):
             f"image_quality：{c['image_quality']}\n"
             f"allow_r18_group：{c['allow_r18_group']}\n"
             f"allow_r18_private：{c['allow_r18_private']}\n"
-            f"r18白名单人数：{len(self.load_r18_whitelist())}\n"
+            f"r18白名单人数：{len(self.permissions.load_r18_whitelist())}\n"
             f"send_mode：{c['send_mode']}\n"
             f"novel_send_mode：{c['novel_send_mode']}\n"
             f"novel_preview_max_chars：{c['novel_preview_max_chars']}\n"
@@ -584,14 +392,14 @@ class PixivcCrawlerPlugin(Star):
 
     @filter.command("pixivc_get_zip")
     async def pixivc_get_zip(self, event: AstrMessageEvent, args: str = ""):
-        data = self.load_last_zip()
-        item_data = self.load_last_items()
+        data = self.cache.load_last_zip()
+        item_data = self.cache.load_last_items()
         last_kind = (item_data.get("kind") or data.get("kind") or "illust") if (item_data or data) else "illust"
         # 已有 ZIP 且类型匹配时直接发送
         if data and (not item_data or data.get("kind", last_kind) == last_kind):
             path = Path(data["path"])
             yield event.plain_result(f"检测到本地已有缓存 ZIP：{path.name}，直接发送，不重新打包。")
-            async for r in self.send_zip(event, path, suppress_ready=True):
+            async for r in self.sender.send_zip(event, path, suppress_ready=True):
                 yield r
             return
         if not item_data:
@@ -608,20 +416,20 @@ class PixivcCrawlerPlugin(Star):
                 if kind == "novel":
                     yield event.plain_result("正在打包小说 ZIP，请稍等。")
                     prep_result = None
-                    async for typ, payload in self.prepare_with_live_progress(event, items, "小说", lambda cb: self.prepare_novel_files(items, "pixivc_novel_" + str(label), progress_cb=cb)):
+                    async for typ, payload in self.downloader.prepare_with_live_progress(event, items, "小说", lambda cb: self.downloader.prepare_novel_files(items, "pixivc_novel_" + str(label), progress_cb=cb)):
                         if typ == "progress":
                             yield payload
                         else:
                             prep_result = payload
                     base, zip_path, files, infos = prep_result
-                    self.save_last_zip(event, zip_path, label, len(items), kind="novel")
-                    async for r in self.send_zip(event, zip_path):
+                    self.cache.save_last_zip(event, zip_path, label, len(items), kind="novel")
+                    async for r in self.sender.send_zip(event, zip_path):
                         yield r
                     shutil.rmtree(base, ignore_errors=True)
                 else:
                     yield event.plain_result("正在下载 original 并打包图片 ZIP，请稍等。")
                     prep_result = None
-                    async for typ, payload in self.prepare_with_live_progress(event, items, "作品", lambda cb: self.prepare_original_zip_from_items(items, "pixivc_original_" + str(label), progress_cb=cb)):
+                    async for typ, payload in self.downloader.prepare_with_live_progress(event, items, "作品", lambda cb: self.downloader.prepare_original_zip_from_items(items, "pixivc_original_" + str(label), progress_cb=cb)):
                         if typ == "progress":
                             yield payload
                         else:
@@ -631,8 +439,8 @@ class PixivcCrawlerPlugin(Star):
                         yield event.plain_result("original 下载失败，请检查代理或 Pixiv 访问。")
                         return
                     work_count = len({item_id(item) for _, item, _, _ in saved})
-                    self.save_last_zip(event, zip_path, label, work_count, kind="illust")
-                    async for r in self.send_zip(event, zip_path):
+                    self.cache.save_last_zip(event, zip_path, label, work_count, kind="illust")
+                    async for r in self.sender.send_zip(event, zip_path):
                         yield r
                     shutil.rmtree(base, ignore_errors=True)
             except Exception as e:
@@ -641,38 +449,38 @@ class PixivcCrawlerPlugin(Star):
 
     @filter.command("pixivc_r18_add")
     async def pixivc_r18_add(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_r18_manage"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_r18_manage"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
-        qq = self.extract_qq_arg(event, "pixivc_r18_add", args)
+        qq = self.permissions.extract_qq_arg(event, "pixivc_r18_add", args)
         if not qq:
             yield event.plain_result("用法：/pixivc_r18_add QQ 或 @某人")
             return
-        data = self.load_r18_whitelist()
+        data = self.permissions.load_r18_whitelist()
         if qq not in data:
             data.append(qq)
-        self.save_r18_whitelist(data)
+        self.permissions.save_r18_whitelist(data)
         yield event.plain_result(f"已加入 Pixivc R18 白名单：{qq}")
 
     @filter.command("pixivc_r18_del")
     async def pixivc_r18_del(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_r18_manage"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_r18_manage"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
-        qq = self.extract_qq_arg(event, "pixivc_r18_del", args)
+        qq = self.permissions.extract_qq_arg(event, "pixivc_r18_del", args)
         if not qq:
             yield event.plain_result("用法：/pixivc_r18_del QQ 或 @某人")
             return
-        data = [x for x in self.load_r18_whitelist() if x != qq]
-        self.save_r18_whitelist(data)
+        data = [x for x in self.permissions.load_r18_whitelist() if x != qq]
+        self.permissions.save_r18_whitelist(data)
         yield event.plain_result(f"已移出 Pixivc R18 白名单：{qq}")
 
     @filter.command("pixivc_r18_list")
     async def pixivc_r18_list(self, event: AstrMessageEvent):
-        if not self.require_admin_feature(event, "admin_r18_manage"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_r18_manage"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
-        data = self.load_r18_whitelist()
+        data = self.permissions.load_r18_whitelist()
         if not data:
             yield event.plain_result("Pixivc R18 白名单：空")
         else:
@@ -680,15 +488,15 @@ class PixivcCrawlerPlugin(Star):
 
     @filter.command("pixivc_cache")
     async def pixivc_cache(self, event: AstrMessageEvent, args: str = ""):
-        _, count = self.parse_query_count(full_command_args(event, "pixivc_cache", args))
-        yield event.plain_result(self.format_cache_list(count))
+        _, count = self.query.parse_query_count(full_command_args(event, "pixivc_cache", args))
+        yield event.plain_result(self.cache.format_cache_list(count))
 
     @filter.command("pixivc_clean")
     async def pixivc_clean(self, event: AstrMessageEvent):
-        if not self.require_admin_feature(event, "admin_clean"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_clean"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
-        ok = await self.clean_download_cache(reason="manual_command")
+        ok = await self.cache.clean_download_cache(reason="manual_command")
         if ok:
             yield event.plain_result("Pixivc 下载缓存已清理。")
         else:
@@ -697,221 +505,221 @@ class PixivcCrawlerPlugin(Star):
     @filter.command("pixivc_key")
     async def pixivc_key(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_key", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         if not q:
             yield event.plain_result("用法：/pixivc_key 关键词")
             return
-        denied = self.require_r18_query_allowed(event, q, tag_terms)
+        denied = self.permissions.require_r18_query_allowed(event, q, tag_terms)
         if denied:
             yield event.plain_result(denied)
             return
-        async for r in self.run_illust_job(event, f"key_{q}", lambda: self.collect_and_or([q], count, "illust", "key", "single", tag_terms)):
+        async for r in self.illust.run_illust_job(event, f"key_{q}", lambda: self.illust.collect_and_or([q], count, "illust", "key", "single", tag_terms)):
             yield r
 
     @filter.command("pixivc_tag")
     async def pixivc_tag(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_tag", args)
-        q, count = self.parse_query_count(args)
+        q, count = self.query.parse_query_count(args)
         if not q:
             yield event.plain_result("用法：/pixivc_tag 标签")
             return
-        denied = self.require_r18_query_allowed(event, q)
+        denied = self.permissions.require_r18_query_allowed(event, q)
         if denied:
             yield event.plain_result(denied)
             return
-        async for r in self.run_illust_job(event, f"tag_{q}", lambda: self.collect_and_or([q], count, "illust", "tag", "single")):
+        async for r in self.illust.run_illust_job(event, f"tag_{q}", lambda: self.illust.collect_and_or([q], count, "illust", "tag", "single")):
             yield r
 
     @filter.command("pixivc_key_and")
     async def pixivc_key_and(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_key_and", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_key_and 关键词1,关键词2")
             return
-        denied = self.require_r18_query_allowed(event, terms, tag_terms)
+        denied = self.permissions.require_r18_query_allowed(event, terms, tag_terms)
         if denied:
             yield event.plain_result(denied)
             return
-        async for r in self.run_illust_job(event, f"key_and_{q}", lambda: self.collect_and_or(terms, count, "illust", "key", "and", tag_terms)):
+        async for r in self.illust.run_illust_job(event, f"key_and_{q}", lambda: self.illust.collect_and_or(terms, count, "illust", "key", "and", tag_terms)):
             yield r
 
     @filter.command("pixivc_key_or")
     async def pixivc_key_or(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_key_or", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_key_or 关键词1,关键词2")
             return
-        denied = self.require_r18_query_allowed(event, terms, tag_terms)
+        denied = self.permissions.require_r18_query_allowed(event, terms, tag_terms)
         if denied:
             yield event.plain_result(denied)
             return
-        async for r in self.run_illust_job(event, f"key_or_{q}", lambda: self.collect_and_or(terms, count, "illust", "key", "or", tag_terms)):
+        async for r in self.illust.run_illust_job(event, f"key_or_{q}", lambda: self.illust.collect_and_or(terms, count, "illust", "key", "or", tag_terms)):
             yield r
 
     @filter.command("pixivc_tag_and")
     async def pixivc_tag_and(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_tag_and", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_tag_and 标签1,标签2")
             return
-        denied = self.require_r18_query_allowed(event, terms, tag_terms)
+        denied = self.permissions.require_r18_query_allowed(event, terms, tag_terms)
         if denied:
             yield event.plain_result(denied)
             return
-        async for r in self.run_illust_job(event, f"tag_and_{q}", lambda: self.collect_and_or(terms, count, "illust", "tag", "and", tag_terms)):
+        async for r in self.illust.run_illust_job(event, f"tag_and_{q}", lambda: self.illust.collect_and_or(terms, count, "illust", "tag", "and", tag_terms)):
             yield r
 
     @filter.command("pixivc_tag_or")
     async def pixivc_tag_or(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_tag_or", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_tag_or 标签1,标签2")
             return
-        denied = self.require_r18_query_allowed(event, terms, tag_terms)
+        denied = self.permissions.require_r18_query_allowed(event, terms, tag_terms)
         if denied:
             yield event.plain_result(denied)
             return
-        async for r in self.run_illust_job(event, f"tag_or_{q}", lambda: self.collect_and_or(terms, count, "illust", "tag", "or", tag_terms)):
+        async for r in self.illust.run_illust_job(event, f"tag_or_{q}", lambda: self.illust.collect_and_or(terms, count, "illust", "tag", "or", tag_terms)):
             yield r
 
     @filter.command("pixivc_rank")
     async def pixivc_rank(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_rank", args)
-        q, count, tag_terms = self.parse_query_count_tags(args or "daily")
+        q, count, tag_terms = self.query.parse_query_count_tags(args or "daily")
         rank_mode = q or "daily"
-        denied = self.require_r18_query_allowed(event, tag_terms)
+        denied = self.permissions.require_r18_query_allowed(event, tag_terms)
         if denied:
             yield event.plain_result(denied)
             return
-        async for r in self.run_illust_job(event, f"rank_{rank_mode}", lambda: self.collect_rank(rank_mode, count, "illust", tag_terms)):
+        async for r in self.illust.run_illust_job(event, f"rank_{rank_mode}", lambda: self.illust.collect_rank(rank_mode, count, "illust", tag_terms)):
             yield r
 
     @filter.command("pixivc_user")
     async def pixivc_user(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_user", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         if not q:
             yield event.plain_result("用法：/pixivc_user 用户ID")
             return
-        denied = self.require_r18_query_allowed(event, tag_terms)
+        denied = self.permissions.require_r18_query_allowed(event, tag_terms)
         if denied:
             yield event.plain_result(denied)
             return
-        async for r in self.run_illust_job(event, f"user_{q}", lambda: self.collect_user(q, count, "illust", tag_terms)):
+        async for r in self.illust.run_illust_job(event, f"user_{q}", lambda: self.illust.collect_user(q, count, "illust", tag_terms)):
             yield r
 
     @filter.command("pixivc_discovery")
     async def pixivc_discovery(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_discovery"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_discovery"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
         args = full_command_args(event, "pixivc_discovery", args)
-        _, count, tag_terms = self.parse_query_count_tags(args)
-        denied = self.require_r18_query_allowed(event, tag_terms)
+        _, count, tag_terms = self.query.parse_query_count_tags(args)
+        denied = self.permissions.require_r18_query_allowed(event, tag_terms)
         if denied:
             yield event.plain_result(denied)
             return
-        async for r in self.run_illust_job(event, "discovery", lambda: self.collect_discovery(count, tag_terms)):
+        async for r in self.illust.run_illust_job(event, "discovery", lambda: self.illust.collect_discovery(count, tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_key")
     async def pixivc_novel_key(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_key", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         if not q:
             yield event.plain_result("用法：/pixivc_novel_key 关键词")
             return
-        async for r in self.run_novel_job(event, f"key_{q}", lambda: self.collect_and_or([q], count, "novel", "key", "single", tag_terms)):
+        async for r in self.novel.run_novel_job(event, f"key_{q}", lambda: self.illust.collect_and_or([q], count, "novel", "key", "single", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_tag")
     async def pixivc_novel_tag(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_tag", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         if not q:
             yield event.plain_result("用法：/pixivc_novel_tag 标签")
             return
-        async for r in self.run_novel_job(event, f"tag_{q}", lambda: self.collect_and_or([q], count, "novel", "tag", "single", tag_terms)):
+        async for r in self.novel.run_novel_job(event, f"tag_{q}", lambda: self.illust.collect_and_or([q], count, "novel", "tag", "single", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_key_and")
     async def pixivc_novel_key_and(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_key_and", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_novel_key_and 关键词1,关键词2")
             return
-        async for r in self.run_novel_job(event, f"key_and_{q}", lambda: self.collect_and_or(terms, count, "novel", "key", "and", tag_terms)):
+        async for r in self.novel.run_novel_job(event, f"key_and_{q}", lambda: self.illust.collect_and_or(terms, count, "novel", "key", "and", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_key_or")
     async def pixivc_novel_key_or(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_key_or", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_novel_key_or 关键词1,关键词2")
             return
-        async for r in self.run_novel_job(event, f"key_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "key", "or", tag_terms)):
+        async for r in self.novel.run_novel_job(event, f"key_or_{q}", lambda: self.illust.collect_and_or(terms, count, "novel", "key", "or", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_tag_and")
     async def pixivc_novel_tag_and(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_tag_and", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_novel_tag_and 标签1,标签2")
             return
-        async for r in self.run_novel_job(event, f"tag_and_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "and", tag_terms)):
+        async for r in self.novel.run_novel_job(event, f"tag_and_{q}", lambda: self.illust.collect_and_or(terms, count, "novel", "tag", "and", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_tag_or")
     async def pixivc_novel_tag_or(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_tag_or", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         terms = split_terms(q)
         if not terms:
             yield event.plain_result("用法：/pixivc_novel_tag_or 标签1,标签2")
             return
-        async for r in self.run_novel_job(event, f"tag_or_{q}", lambda: self.collect_and_or(terms, count, "novel", "tag", "or", tag_terms)):
+        async for r in self.novel.run_novel_job(event, f"tag_or_{q}", lambda: self.illust.collect_and_or(terms, count, "novel", "tag", "or", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_recommended", alias={"pixivc_novel_discovery"})
     async def pixivc_novel_recommended(self, event: AstrMessageEvent, args: str = ""):
-        if not self.require_admin_feature(event, "admin_novel_recommended"):
-            yield event.plain_result(self.admin_denied_text())
+        if not self.permissions.require_admin_feature(event, "admin_novel_recommended"):
+            yield event.plain_result(self.permissions.admin_denied_text())
             return
         args = full_command_args(event, "pixivc_novel_recommended", args)
-        _, count, tag_terms = self.parse_query_count_tags(args)
-        async for r in self.run_novel_job(event, "recommended", lambda: self.collect_paginated_novel("novel_recommended", count, tag_terms=tag_terms)):
+        _, count, tag_terms = self.query.parse_query_count_tags(args)
+        async for r in self.novel.run_novel_job(event, "recommended", lambda: self.novel.collect_paginated_novel("novel_recommended", count, tag_terms=tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_rank")
     async def pixivc_novel_rank(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_rank", args)
-        q, count, tag_terms = self.parse_query_count_tags(args or "daily")
+        q, count, tag_terms = self.query.parse_query_count_tags(args or "daily")
         rank_mode = q or "daily"
-        async for r in self.run_novel_job(event, f"rank_{rank_mode}", lambda: self.collect_rank(rank_mode, count, "novel", tag_terms)):
+        async for r in self.novel.run_novel_job(event, f"rank_{rank_mode}", lambda: self.illust.collect_rank(rank_mode, count, "novel", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_user")
     async def pixivc_novel_user(self, event: AstrMessageEvent, args: str = ""):
         args = full_command_args(event, "pixivc_novel_user", args)
-        q, count, tag_terms = self.parse_query_count_tags(args)
+        q, count, tag_terms = self.query.parse_query_count_tags(args)
         if not q:
             yield event.plain_result("用法：/pixivc_novel_user 用户ID")
             return
-        async for r in self.run_novel_job(event, f"user_{q}", lambda: self.collect_user(q, count, "novel", tag_terms)):
+        async for r in self.novel.run_novel_job(event, f"user_{q}", lambda: self.illust.collect_user(q, count, "novel", tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_id")
@@ -922,9 +730,9 @@ class PixivcCrawlerPlugin(Star):
             yield event.plain_result("用法：/pixivc_novel_id 小说ID")
             return
         async def collector():
-            api = await self.api()
-            resp = await self.api_call("novel_detail", int(novel_id))
+            api = await self.auth.api()
+            resp = await self.auth.api_call("novel_detail", int(novel_id))
             novel = getv(resp, "novel", None)
-            return [novel] if novel and self.pass_filter(novel, "novel") else []
-        async for r in self.run_novel_job(event, f"id_{novel_id}", collector):
+            return [novel] if novel and self.permissions.pass_filter(novel, "novel") else []
+        async for r in self.novel.run_novel_job(event, f"id_{novel_id}", collector):
             yield r

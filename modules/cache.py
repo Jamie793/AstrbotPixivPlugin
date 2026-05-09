@@ -1,34 +1,12 @@
 import asyncio
-import base64
-import html
-import json
-import os
-import re
-import secrets
 import shutil
-import string
 import time
-import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
-
-import aiohttp
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
-from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
-from pixivpy3 import AppPixivAPI, ByPassSniApi
-
 from .base import BaseService
-
-try:
-    import pyzipper
-except Exception:
-    pyzipper = None
-
 from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
-from .errors import PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE, PixivRefreshTokenInvalidError
-from .help import build_help_text as build_pixivc_help_text
-from .oauth import generate_login_url, exchange_token, token_parts
 from .pixiv_utils import (
     build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
     getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
@@ -39,7 +17,7 @@ from .pixiv_utils import (
 
 class CacheService(BaseService):
     def next_clean_time(self):
-        c = self.cfg()
+        c = self.config_service.cfg()
         now = datetime.now()
         nxt = now.replace(hour=c["auto_clean_hour"], minute=c["auto_clean_minute"], second=0, microsecond=0)
         if nxt <= now:
@@ -60,7 +38,7 @@ class CacheService(BaseService):
                 await asyncio.sleep(60)
 
     async def clean_download_cache(self, reason="manual"):
-        c = self.cfg()
+        c = self.config_service.cfg()
         d = c["download_dir"]
         if self._task_lock.locked():
             logger.info("Pixivc 清理跳过：当前有爬取任务正在执行")
@@ -106,7 +84,7 @@ class CacheService(BaseService):
         return str(self.config.get("download_dir", "data/downloads") or "data/downloads").strip()
 
     def format_cache_list(self, limit=30):
-        c = self.cfg()
+        c = self.config_service.cfg()
         d = c["download_dir"]
         display_dir = self.configured_cache_dir_text()
         d.mkdir(parents=True, exist_ok=True)
@@ -139,8 +117,8 @@ class CacheService(BaseService):
             "kind": str(kind),
             "label": str(label),
             "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "sender_id": self.sender_id(event),
-            "items": [self._plain_item(x) for x in items],
+            "sender_id": self.permissions.sender_id(event),
+            "items": [self.sender._plain_item(x) for x in items],
         }
         try:
             gid = event.get_group_id()
@@ -170,7 +148,7 @@ class CacheService(BaseService):
             "label": str(label),
             "count": int(count),
             "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "sender_id": self.sender_id(event),
+            "sender_id": self.permissions.sender_id(event),
         }
         try:
             gid = event.get_group_id()
