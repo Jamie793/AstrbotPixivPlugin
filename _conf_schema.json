@@ -1,16 +1,24 @@
 {
   "refresh_token": {
-    "description": "Pixiv Refresh Token",
+    "description": "Pixiv Refresh Token（必填）",
     "type": "string",
-    "hint": "用于 Pixiv API 认证。必须在本插件中填写，不再复用 pixiv_reborn 配置。",
+    "hint": "用于 Pixiv API 认证，必须填写。access_token 失效时会自动用它静默刷新；如刷新失败，请重新获取并更新。",
     "default": "",
     "is_sensitive": true,
-    "required": false
+    "required": true
+  },
+  "refresh_token_interval_hours": {
+    "description": "Refresh Token 静默刷新间隔（小时）",
+    "type": "int",
+    "hint": "插件开启时会按此间隔静默刷新 Refresh Token。单位为小时，默认 72 小时；设置为 0 可关闭定时刷新。",
+    "default": 72,
+    "min": 0,
+    "max": 720
   },
   "proxy": {
     "description": "代理地址",
     "type": "string",
-    "hint": "Pixiv 请求代理地址，例如 http://127.0.0.1:7890。留空时仅尝试使用环境变量代理，不再复用 pixiv_reborn 配置。",
+    "hint": "Pixiv 请求代理地址，例如 http://127.0.0.1:7890。留空时仅尝试使用环境变量代理。",
     "default": ""
   },
   "use_image_proxy_without_proxy": {

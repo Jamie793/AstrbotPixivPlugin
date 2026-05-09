@@ -40,10 +40,11 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 
 安装后进入 AstrBot 后台插件配置，填写：
 
-- refresh_token：Pixiv Refresh Token
+- refresh_token：Pixiv Refresh Token，必填
 
 可选配置：
 
+- refresh_token_interval_hours：Refresh Token 静默刷新间隔，单位小时，默认 72；设置为 0 可关闭定时刷新
 - proxy：Pixiv API 代理地址，例如 http://127.0.0.1:7890
 - use_image_proxy_without_proxy：无代理时使用图片反代下载图片，可在后台开关切换
 - image_proxy_host：图片反代地址，默认 https://i.pixiv.re
@@ -81,6 +82,8 @@ https://github.com/Jamie793/AstrbotPixivPlugin
 6. 将 refresh token 填入插件配置
 
 也可以使用其它 OAuth 工具获取 refresh_token，然后填写到插件配置中。
+
+access token 失效时插件会自动静默刷新并重试；如果 Refresh Token 失效，请重新获取并更新插件配置。
 
 注意：
 

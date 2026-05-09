@@ -37,8 +37,16 @@ DEFAULT_DOWNLOAD_DIR = DATA_DIR / "downloads"
 R18_WHITELIST_FILE = DATA_DIR / "r18_whitelist.json"
 LAST_ZIP_FILE = DATA_DIR / "last_zip.json"
 LAST_ITEMS_FILE = DATA_DIR / "last_items.json"
+TOKEN_STATE_FILE = DATA_DIR / "token_state.json"
 OAUTH_STATE_FILE = DATA_DIR / "oauth_state.json"
 OWNER_QQ = "10627452"
+PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE = "请手动填写/更新Refresh Token用于Pixiv服务请求！"
+
+
+class PixivRefreshTokenInvalidError(RuntimeError):
+    pass
+
+
 HELP_TEXT = """Pixivc 爬虫帮助：
 
 图片命令：
@@ -344,17 +352,128 @@ class PixivcCrawlerPlugin(Star):
         self._current_start_page_override = None
         self._last_debug = ""
         self._clean_task = None
+        self._refresh_token_task = None
 
     async def initialize(self):
         c = self.cfg()
         if c["auto_clean_enabled"] and (self._clean_task is None or self._clean_task.done()):
             self._clean_task = asyncio.create_task(self.auto_clean_loop())
             logger.info(f"Pixivc 每日自动清理已启用：{c['auto_clean_hour']:02d}:{c['auto_clean_minute']:02d}")
+        if c["refresh_token_interval_hours"] > 0 and (self._refresh_token_task is None or self._refresh_token_task.done()):
+            self._refresh_token_task = asyncio.create_task(self.refresh_token_keepalive_loop())
+            logger.info(f"Pixivc Refresh Token 静默刷新已启用：每 {c['refresh_token_interval_hours']} 小时。")
 
     async def terminate(self):
         if self._clean_task and not self._clean_task.done():
             self._clean_task.cancel()
             logger.info("Pixivc 每日自动清理任务已停止")
+        if self._refresh_token_task and not self._refresh_token_task.done():
+            self._refresh_token_task.cancel()
+            logger.info("Pixivc Refresh Token 静默刷新任务已停止")
+
+    def save_token_state(self, api=None):
+        """保存运行期 Pixiv token 状态。/pixivc_get_token 获取流程不会调用这里。"""
+        api = api or self._api
+        access_token = str(getattr(api, "access_token", "") or "").strip()
+        refresh_token = str(getattr(api, "refresh_token", "") or "").strip()
+        expires_in = getattr(api, "expires_in", None)
+        if not access_token and not refresh_token:
+            return
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "saved_at": int(time.time()),
+        }
+        if expires_in is not None:
+            try:
+                payload["expires_in"] = int(expires_in)
+                payload["expires_at"] = int(time.time()) + int(expires_in)
+            except Exception:
+                pass
+        tmp = TOKEN_STATE_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp, TOKEN_STATE_FILE)
+        try:
+            os.chmod(TOKEN_STATE_FILE, 0o600)
+        except Exception:
+            pass
+        logger.info("Pixivc token 状态已静默保存到本地文件。")
+
+    def load_token_state(self) -> dict:
+        try:
+            if not TOKEN_STATE_FILE.exists():
+                return {}
+            data = json.loads(TOKEN_STATE_FILE.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except Exception as e:
+            logger.warning(f"Pixivc 读取本地 token 状态失败：{type(e).__name__}: {e}")
+            return {}
+
+    def restore_token_state_to_api(self, api) -> bool:
+        """启动后把文件中的 access_token/refresh_token 恢复进 pixivpy3 实例。"""
+        state = self.load_token_state()
+        access_token = str(state.get("access_token") or "").strip()
+        refresh_token = str(state.get("refresh_token") or "").strip()
+        if not access_token:
+            return False
+        api.access_token = access_token
+        if refresh_token:
+            api.refresh_token = refresh_token
+        expires_at = state.get("expires_at")
+        if expires_at is not None:
+            try:
+                api.expires_in = max(0, int(expires_at) - int(time.time()))
+            except Exception:
+                pass
+        logger.info("Pixivc 已从本地文件恢复 access token 状态。")
+        return True
+
+    def persist_rotated_refresh_token(self, api=None):
+        """认证成功后，如果 pixivpy3 返回了新的 refresh_token，则静默写回本插件配置。"""
+        api = api or self._api
+        new_refresh_token = str(getattr(api, "refresh_token", "") or "").strip()
+        old_refresh_token = str(self.config.get("refresh_token") or "").strip()
+        if not new_refresh_token or new_refresh_token == old_refresh_token:
+            return
+        self.config["refresh_token"] = new_refresh_token
+        try:
+            if hasattr(self.config, "save_config"):
+                self.config.save_config()
+            config_file = Path("/AstrBot/data/config/astrbot_plugin_pixivs_crawler_config.json")
+            if config_file.exists():
+                try:
+                    raw_config = json.loads(config_file.read_text(encoding="utf-8-sig"))
+                    raw_config["refresh_token"] = new_refresh_token
+                    tmp = config_file.with_suffix(".tmp")
+                    tmp.write_text(json.dumps(raw_config, ensure_ascii=False, indent=2), encoding="utf-8")
+                    os.replace(tmp, config_file)
+                except Exception as file_e:
+                    logger.warning(f"Pixivc 写回后台配置文件失败：{type(file_e).__name__}: {file_e}")
+            logger.info("Pixivc 检测到新的 Refresh Token，已静默写回插件配置。")
+        except Exception as e:
+            logger.error(f"Pixivc 写回新的 Refresh Token 失败：{type(e).__name__}: {e}")
+
+    async def refresh_token_keepalive_loop(self):
+        """插件开启状态下定时静默认证，避免 refresh_token 长期未使用。"""
+        startup_delay = 60
+        while True:
+            try:
+                await asyncio.sleep(startup_delay)
+                c = self.cfg()
+                interval_seconds = max(3600, int(c["refresh_token_interval_hours"] * 3600))
+                startup_delay = interval_seconds
+                if not c["refresh_token"]:
+                    logger.warning("Pixivc Refresh Token 静默刷新跳过：未配置 refresh_token。")
+                    continue
+                logger.info("Pixivc Refresh Token 静默刷新开始。")
+                await self.refresh_api_silent(reason="refresh_token_keepalive")
+                logger.info("Pixivc Refresh Token 静默刷新成功。")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning(f"Pixivc Refresh Token 静默刷新失败：{type(e).__name__}: {e}", exc_info=True)
+                await asyncio.sleep(300)
 
     def next_clean_time(self):
         c = self.cfg()
@@ -463,6 +582,7 @@ class PixivcCrawlerPlugin(Star):
             dl_path = PLUGIN_DIR / dl_path
         return {
             "refresh_token": str(self.config.get("refresh_token") or "").strip(),
+            "refresh_token_interval_hours": max(0, int(self.config.get("refresh_token_interval_hours", 72) or 72)),
             "proxy": proxy,
             "use_image_proxy_without_proxy": bool(self.config.get("use_image_proxy_without_proxy", True)),
             "image_proxy_host": str(self.config.get("image_proxy_host", "https://i.pixiv.re") or "https://i.pixiv.re").rstrip("/"),
@@ -532,7 +652,14 @@ class PixivcCrawlerPlugin(Star):
         async with self._auth_lock:
             if self._api is None:
                 self._api = self.create_api(c["proxy"])
-                await asyncio.to_thread(self._api.auth, refresh_token=c["refresh_token"])
+                if not self.restore_token_state_to_api(self._api):
+                    try:
+                        await asyncio.to_thread(self._api.auth, refresh_token=c["refresh_token"])
+                    except Exception as e:
+                        logger.warning(f"Pixivc 初次认证失败：{type(e).__name__}: {e}")
+                        raise PixivRefreshTokenInvalidError(PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE) from e
+                    self.persist_rotated_refresh_token(self._api)
+                    self.save_token_state(self._api)
             return self._api
 
     def _looks_auth_failed(self, exc=None, resp=None) -> bool:
@@ -548,16 +675,27 @@ class PixivcCrawlerPlugin(Star):
         else:
             text = str(exc or "")
         lower = text.lower()
-        return any(k in lower for k in ["invalid_grant", "invalid_request", "invalid token", "access token", "unauthorized", "oauth", "token expired", "expired token"])
+        return any(k in lower for k in ["invalid_grant", "invalid_request", "invalid token", "access token", "unauthorized", "oauth", "token expired", "expired token", "authentication required", "auth required", "call login", "set_auth", "login()"])
 
-    async def refresh_api_silent(self):
+    def user_facing_error(self, e: Exception) -> str:
+        if isinstance(e, PixivRefreshTokenInvalidError):
+            return str(e)
+        return str(e)
+
+    async def refresh_api_silent(self, reason: str = "access_token_expired"):
         c = self.cfg()
         if not c["refresh_token"]:
-            raise RuntimeError("未配置 Pixiv refresh_token，请在本插件设置中填写。")
+            raise PixivRefreshTokenInvalidError(PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE)
         async with self._auth_lock:
-            logger.info("Pixivc access token 可能失效，正在后台静默刷新。")
+            logger.info(f"Pixivc 正在后台静默刷新认证，reason={reason}。")
             self._api = self.create_api(c["proxy"])
-            await asyncio.to_thread(self._api.auth, refresh_token=c["refresh_token"])
+            try:
+                await asyncio.to_thread(self._api.auth, refresh_token=c["refresh_token"])
+            except Exception as e:
+                logger.warning(f"Pixivc 使用 Refresh Token 刷新认证失败：{type(e).__name__}: {e}")
+                raise PixivRefreshTokenInvalidError(PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE) from e
+            self.persist_rotated_refresh_token(self._api)
+            self.save_token_state(self._api)
             return self._api
 
     async def api_call(self, method_name: str, *args, **kwargs):
@@ -1522,6 +1660,9 @@ class PixivcCrawlerPlugin(Star):
                         async for r in self.dispatch_illust_result(event, base, zip_path, saved):
                             yield r
                         return
+                    except PixivRefreshTokenInvalidError as e:
+                        yield event.plain_result(str(e))
+                        return
                     except Exception as e:
                         if attempt == 0 and self._looks_auth_failed(exc=e):
                             await self.refresh_api_silent()
@@ -1559,6 +1700,9 @@ class PixivcCrawlerPlugin(Star):
                         yield event.plain_result(f"小说处理完成：{len(items)} 篇，正在发送合并转发预览。需要小说 ZIP 请发送 /pixivc_get_zip")
                         async for r in self.send_forward(event, [], novel_infos=infos if c["include_novel_info"] else ["小说信息已按配置隐藏"]):
                             yield r
+                        return
+                    except PixivRefreshTokenInvalidError as e:
+                        yield event.plain_result(str(e))
                         return
                     except Exception as e:
                         if attempt == 0 and self._looks_auth_failed(exc=e):
@@ -1842,6 +1986,9 @@ class PixivcCrawlerPlugin(Star):
                 tags = await self.pixiv_autocomplete(q)
                 yield event.plain_result(self.format_autocomplete(tags, 20))
                 return
+            except PixivRefreshTokenInvalidError as e:
+                yield event.plain_result(str(e))
+                return
             except Exception as e:
                 if attempt == 0 and self._looks_auth_failed(exc=e):
                     await self.refresh_api_silent()
@@ -2009,6 +2156,8 @@ class PixivcCrawlerPlugin(Star):
         yield event.plain_result(
             "Pixivc 状态：\n"
             f"refresh_token：{'已设置' if c['refresh_token'] else '未设置'}\n"
+            f"access_token_cache：{'已保存' if TOKEN_STATE_FILE.exists() else '未保存'}\n"
+            f"refresh_token_interval_hours：{c['refresh_token_interval_hours']}\n"
             f"proxy：{c['proxy'] or '未设置'}\n"
             f"use_image_proxy_without_proxy：{c['use_image_proxy_without_proxy']}\n"
             f"image_proxy_host：{c['image_proxy_host']}\n"
