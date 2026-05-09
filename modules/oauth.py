@@ -10,6 +10,8 @@ from pathlib import Path
 AUTH_TOKEN_URL = 'https://oauth.secure.pixiv.net/auth/token'
 LOGIN_URL = 'https://app-api.pixiv.net/web/v1/login'
 REDIRECT_URI = 'https://app-api.pixiv.net/web/v1/users/auth/pixiv/callback'
+# Pixiv 官方 Android App OAuth 公共客户端参数，用于 App API PKCE 登录流程。
+# 这不是本插件作者的私有密钥；如 Pixiv 官方客户端参数变更，需要同步更新。
 CLIENT_ID = 'MOBrBDS8blbauoSck0ZfDbtuzpyT'
 CLIENT_SECRET = 'lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj'
 USER_AGENT = 'PixivAndroidApp/5.0.234 (Android 11; Pixel 5)'

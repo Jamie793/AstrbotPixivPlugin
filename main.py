@@ -20,7 +20,7 @@ from typing import Any, Iterable
 import aiohttp
 from astrbot.api import logger
 from astrbot.api.event import filter, AstrMessageEvent
-from astrbot.api.star import Context, Star, register
+from astrbot.api.star import Context, Star, StarTools, register
 from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
 from pixivpy3 import AppPixivAPI, ByPassSniApi
 
@@ -32,7 +32,7 @@ except ImportError:
     from modules.oauth import generate_login_url, exchange_token, token_parts
 
 PLUGIN_DIR = Path(__file__).parent
-DATA_DIR = PLUGIN_DIR / "data"
+DATA_DIR = StarTools.get_data_dir("astrbot_plugin_pixivs_crawler")
 DEFAULT_DOWNLOAD_DIR = DATA_DIR / "downloads"
 R18_WHITELIST_FILE = DATA_DIR / "r18_whitelist.json"
 LAST_ZIP_FILE = DATA_DIR / "last_zip.json"
@@ -354,8 +354,27 @@ class PixivcCrawlerPlugin(Star):
         self._clean_task = None
         self._refresh_token_task = None
 
+    def migrate_legacy_data_dir(self):
+        """从旧版插件目录 data 迁移运行数据到 AstrBot 规范数据目录。"""
+        legacy_dir = PLUGIN_DIR / "data"
+        if not legacy_dir.exists() or legacy_dir.resolve() == DATA_DIR.resolve():
+            return
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        for name in ["r18_whitelist.json", "last_zip.json", "last_items.json", "token_state.json", "oauth_state.json"]:
+            src = legacy_dir / name
+            dst = DATA_DIR / name
+            if src.exists() and not dst.exists():
+                try:
+                    shutil.copy2(src, dst)
+                    logger.info(f"Pixivc 已迁移旧数据文件：{name}")
+                except OSError as e:
+                    logger.warning(f"Pixivc 迁移旧数据文件失败 {name}: {e}")
+
     async def initialize(self):
+        self.migrate_legacy_data_dir()
         c = self.cfg()
+        if c.get("encrypt_zip_enabled", False) and pyzipper is None:
+            logger.warning("Pixivc 已开启 ZIP 加密，但缺少 pyzipper 依赖；请安装 requirements.txt 后重启插件。")
         if c["auto_clean_enabled"] and (self._clean_task is None or self._clean_task.done()):
             self._clean_task = asyncio.create_task(self.auto_clean_loop())
             logger.info(f"Pixivc 每日自动清理已启用：{c['auto_clean_hour']:02d}:{c['auto_clean_minute']:02d}")
@@ -440,17 +459,9 @@ class PixivcCrawlerPlugin(Star):
         try:
             if hasattr(self.config, "save_config"):
                 self.config.save_config()
-            config_file = Path("/AstrBot/data/config/astrbot_plugin_pixivs_crawler_config.json")
-            if config_file.exists():
-                try:
-                    raw_config = json.loads(config_file.read_text(encoding="utf-8-sig"))
-                    raw_config["refresh_token"] = new_refresh_token
-                    tmp = config_file.with_suffix(".tmp")
-                    tmp.write_text(json.dumps(raw_config, ensure_ascii=False, indent=2), encoding="utf-8")
-                    os.replace(tmp, config_file)
-                except Exception as file_e:
-                    logger.warning(f"Pixivc 写回后台配置文件失败：{type(file_e).__name__}: {file_e}")
-            logger.info("Pixivc 检测到新的 Refresh Token，已静默写回插件配置。")
+                logger.info("Pixivc 检测到新的 Refresh Token，已静默写回插件配置。")
+            else:
+                logger.info("Pixivc 检测到新的 Refresh Token，已更新运行时配置；当前配置对象不支持自动持久化。")
         except Exception as e:
             logger.error(f"Pixivc 写回新的 Refresh Token 失败：{type(e).__name__}: {e}")
 
@@ -579,7 +590,7 @@ class PixivcCrawlerPlugin(Star):
         download_dir = str(self.config.get("download_dir", "data/downloads") or "data/downloads")
         dl_path = Path(download_dir)
         if not dl_path.is_absolute():
-            dl_path = PLUGIN_DIR / dl_path
+            dl_path = DATA_DIR / dl_path
         return {
             "refresh_token": str(self.config.get("refresh_token") or "").strip(),
             "refresh_token_interval_hours": max(0, int(self.config.get("refresh_token_interval_hours", 72) or 72)),

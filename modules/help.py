@@ -31,24 +31,24 @@ def build_help_text(admin_mark):
 22. /pixivc_cache
 23. /pixivc_clean{ad('admin_clean')}
 24. /pixivc_get_zip
-24. /pixivc_r18_add{ad('admin_r18_manage')} QQ 或 @某人
-25. /pixivc_r18_del{ad('admin_r18_manage')} QQ 或 @某人
-26. /pixivc_r18_list{ad('admin_r18_manage')}
-27. /pixivc_auto xxx
-28. /pixivc_illust_id 作品ID
-29. /pixivc_bookmark_add{ad('admin_bookmark')} 作品ID
-30. /pixivc_bookmark_del{ad('admin_bookmark')} 作品ID
-31. /pixivc_bookmarks{ad('admin_bookmarks')}
-32. /pixivc_trending_tags
-33. /pixivc_related 作品ID
-34. /pixivc_follow_add{ad('admin_follow')} 用户ID
-35. /pixivc_follow_del{ad('admin_follow')} 用户ID
-36. /pixivc_following{ad('admin_following')}
-37. /pixivc_follow_latest{ad('admin_follow_latest')}
-38. /pixivc_new
-39. /pixivc_recommended_users{ad('admin_recommended_users')}
-40. /pixivc_user_search 关键词
-40. /pixiv_get_token
+25. /pixivc_r18_add{ad('admin_r18_manage')} QQ 或 @某人
+26. /pixivc_r18_del{ad('admin_r18_manage')} QQ 或 @某人
+27. /pixivc_r18_list{ad('admin_r18_manage')}
+28. /pixivc_auto xxx
+29. /pixivc_illust_id 作品ID
+30. /pixivc_bookmark_add{ad('admin_bookmark')} 作品ID
+31. /pixivc_bookmark_del{ad('admin_bookmark')} 作品ID
+32. /pixivc_bookmarks{ad('admin_bookmarks')}
+33. /pixivc_trending_tags
+34. /pixivc_related 作品ID
+35. /pixivc_follow_add{ad('admin_follow')} 用户ID
+36. /pixivc_follow_del{ad('admin_follow')} 用户ID
+37. /pixivc_following{ad('admin_following')}
+38. /pixivc_follow_latest{ad('admin_follow_latest')}
+39. /pixivc_new
+40. /pixivc_recommended_users{ad('admin_recommended_users')}
+41. /pixivc_user_search 关键词
+42. /pixiv_get_token
 
 说明：
 - 参数格式均可放在命令任意位置。
