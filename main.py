@@ -354,24 +354,7 @@ class PixivcCrawlerPlugin(Star):
         self._clean_task = None
         self._refresh_token_task = None
 
-    def migrate_legacy_data_dir(self):
-        """从旧版插件目录 data 迁移运行数据到 AstrBot 规范数据目录。"""
-        legacy_dir = PLUGIN_DIR / "data"
-        if not legacy_dir.exists() or legacy_dir.resolve() == DATA_DIR.resolve():
-            return
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        for name in ["r18_whitelist.json", "last_zip.json", "last_items.json", "token_state.json", "oauth_state.json"]:
-            src = legacy_dir / name
-            dst = DATA_DIR / name
-            if src.exists() and not dst.exists():
-                try:
-                    shutil.copy2(src, dst)
-                    logger.info(f"Pixivc 已迁移旧数据文件：{name}")
-                except OSError as e:
-                    logger.warning(f"Pixivc 迁移旧数据文件失败 {name}: {e}")
-
     async def initialize(self):
-        self.migrate_legacy_data_dir()
         c = self.cfg()
         if c.get("encrypt_zip_enabled", False) and pyzipper is None:
             logger.warning("Pixivc 已开启 ZIP 加密，但缺少 pyzipper 依赖；请安装 requirements.txt 后重启插件。")
