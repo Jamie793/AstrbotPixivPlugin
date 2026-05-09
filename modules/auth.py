@@ -6,9 +6,8 @@ import uuid
 from astrbot.api import logger
 from pixivpy3 import AppPixivAPI, ByPassSniApi
 from .base import BaseService
-from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
+from .paths import DATA_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE
 from .errors import PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE, PixivRefreshTokenInvalidError
-
 
 class AuthService(BaseService):
     def save_token_state(self, api=None):

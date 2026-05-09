@@ -18,7 +18,6 @@ from .pixiv_utils import (
     to_int, unique_items, user_info, write_json,
 )
 
-
 class DownloaderService(BaseService):
     def convert_image_proxy_url(self, url: str, proxy=None) -> str:
         c = self.config_service.cfg()

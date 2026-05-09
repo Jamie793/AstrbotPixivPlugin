@@ -7,7 +7,6 @@ from .pixiv_utils import (
     to_int, unique_items, user_info, write_json,
 )
 
-
 class QueryService(BaseService):
     def parse_query_count(self, raw: str):
         c = self.config_service.cfg()

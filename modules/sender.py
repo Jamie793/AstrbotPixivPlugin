@@ -13,7 +13,6 @@ from .pixiv_utils import (
     to_int, unique_items, user_info, write_json,
 )
 
-
 class SenderService(BaseService):
     async def send_zip(self, event: AstrMessageEvent, zip_path: Path, suppress_ready: bool = False):
         c = self.config_service.cfg()

@@ -8,7 +8,6 @@ from .pixiv_utils import (
     to_int, unique_items, user_info, write_json,
 )
 
-
 class IllustService(BaseService):
     async def collect_page_search(self, api, query, count, kind="illust", target="partial_match_for_tags", tag_terms=None):
         self._last_requested_count = count

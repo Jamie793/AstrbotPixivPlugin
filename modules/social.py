@@ -6,7 +6,6 @@ from .pixiv_utils import (
     to_int, unique_items, user_info, write_json,
 )
 
-
 class SocialService(BaseService):
     async def _get_api_user_id(self):
         api = await self.auth.api()

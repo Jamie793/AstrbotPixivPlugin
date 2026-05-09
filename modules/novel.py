@@ -8,7 +8,6 @@ from .pixiv_utils import (
     to_int, unique_items, user_info, write_json,
 )
 
-
 class NovelService(BaseService):
     async def fetch_novel_text(self, novel_id):
         api = await self.auth.api()

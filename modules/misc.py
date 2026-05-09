@@ -2,7 +2,6 @@ import asyncio
 from .base import BaseService
 from .help import build_help_text as build_pixivc_help_text
 
-
 class MiscService(BaseService):
     def admin_mark(self, key: str) -> str:
         return " [Admin]" if self.config_service.cfg().get(key, True) else ""

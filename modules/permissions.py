@@ -1,15 +1,14 @@
 import re
 from astrbot.api.event import AstrMessageEvent
-from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
+from astrbot.api.message_components import At
 from .base import BaseService
-from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
+from .paths import R18_WHITELIST_FILE
 from .pixiv_utils import (
     build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
     getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
     read_json, safe_filename, searchable_text, split_terms, stat_value, tags_text,
     to_int, unique_items, user_info, write_json,
 )
-
 
 class PermissionService(BaseService):
     def sender_id(self, event: AstrMessageEvent) -> str:
@@ -23,7 +22,10 @@ class PermissionService(BaseService):
             return ""
 
     def is_owner(self, event: AstrMessageEvent) -> bool:
-        return self.sender_id(event) == OWNER_QQ
+        try:
+            return bool(event.is_admin())
+        except Exception:
+            return str(getattr(event, "role", "") or "").strip().lower() == "admin"
 
     def load_r18_whitelist(self):
         data = read_json(R18_WHITELIST_FILE, {"qq_list": []})

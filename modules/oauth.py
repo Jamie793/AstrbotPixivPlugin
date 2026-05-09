@@ -19,10 +19,8 @@ DEFAULT_CLIENT_ID = 'MOBrBDS8blbauoSck0ZfDbtuzpyT'
 DEFAULT_CLIENT_SECRET = 'lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj'
 USER_AGENT = 'PixivAndroidApp/5.0.234 (Android 11; Pixel 5)'
 
-
 def s256(data: bytes) -> str:
     return base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b'=').decode('ascii')
-
 
 def generate_login_url(state_path: Path) -> str:
     code_verifier = secrets.token_urlsafe(32)
@@ -41,7 +39,6 @@ def generate_login_url(state_path: Path) -> str:
     }
     return LOGIN_URL + '?' + urllib.parse.urlencode(params)
 
-
 def extract_code(text: str) -> str:
     text = (text or '').strip()
     if not text:
@@ -58,13 +55,11 @@ def extract_code(text: str) -> str:
         return text
     return ''
 
-
 def parse_json_or_raw(raw: str) -> dict:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
         return {'raw': raw}
-
 
 async def exchange_token(callback_text: str, state_path: Path) -> dict:
     code = extract_code(callback_text)
@@ -104,7 +99,6 @@ async def exchange_token(callback_text: str, state_path: Path) -> dict:
         return {'error': str(e)}
     except TimeoutError as e:
         return {'error': str(e)}
-
 
 def token_parts(obj: dict):
     access_token = obj.get('access_token') or obj.get('response', {}).get('access_token')

@@ -1,8 +1,7 @@
 import os
 from pathlib import Path
 from .base import BaseService
-from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
-
+from .paths import DATA_DIR
 
 class ConfigService(BaseService):
     def cfg(self):
@@ -14,6 +13,11 @@ class ConfigService(BaseService):
         dl_path = Path(download_dir)
         if not dl_path.is_absolute():
             dl_path = DATA_DIR / dl_path
+        admin_permissions = self.config.get("admin_permissions") or {}
+
+        def admin_perm(key: str, default: bool = True) -> bool:
+            return bool(admin_permissions.get(key, self.config.get(key, default)))
+
         return {
             "refresh_token": str(self.config.get("refresh_token") or "").strip(),
             "refresh_token_interval_hours": max(0, int(self.config.get("refresh_token_interval_hours", 72) or 72)),
@@ -27,16 +31,16 @@ class ConfigService(BaseService):
             "allow_r18_group": bool(self.config.get("allow_r18_group", False)),
             "allow_r18_private": bool(self.config.get("allow_r18_private", False)),
             "allow_ai": bool(self.config.get("allow_ai", True)),
-            "admin_discovery": bool((self.config.get("admin_permissions") or {}).get("admin_discovery", self.config.get("admin_discovery", True))),
-            "admin_bookmark": bool((self.config.get("admin_permissions") or {}).get("admin_bookmark", self.config.get("admin_bookmark", True))),
-            "admin_bookmarks": bool((self.config.get("admin_permissions") or {}).get("admin_bookmarks", self.config.get("admin_bookmarks", True))),
-            "admin_follow": bool((self.config.get("admin_permissions") or {}).get("admin_follow", self.config.get("admin_follow", True))),
-            "admin_following": bool((self.config.get("admin_permissions") or {}).get("admin_following", self.config.get("admin_following", True))),
-            "admin_follow_latest": bool((self.config.get("admin_permissions") or {}).get("admin_follow_latest", self.config.get("admin_follow_latest", True))),
-            "admin_recommended_users": bool((self.config.get("admin_permissions") or {}).get("admin_recommended_users", self.config.get("admin_recommended_users", True))),
-            "admin_novel_recommended": bool((self.config.get("admin_permissions") or {}).get("admin_novel_recommended", self.config.get("admin_novel_recommended", True))),
-            "admin_clean": bool((self.config.get("admin_permissions") or {}).get("admin_clean", self.config.get("admin_clean", True))),
-            "admin_r18_manage": bool((self.config.get("admin_permissions") or {}).get("admin_r18_manage", self.config.get("admin_r18_manage", True))),
+            "admin_discovery": admin_perm("admin_discovery"),
+            "admin_bookmark": admin_perm("admin_bookmark"),
+            "admin_bookmarks": admin_perm("admin_bookmarks"),
+            "admin_follow": admin_perm("admin_follow"),
+            "admin_following": admin_perm("admin_following"),
+            "admin_follow_latest": admin_perm("admin_follow_latest"),
+            "admin_recommended_users": admin_perm("admin_recommended_users"),
+            "admin_novel_recommended": admin_perm("admin_novel_recommended"),
+            "admin_clean": admin_perm("admin_clean"),
+            "admin_r18_manage": admin_perm("admin_r18_manage"),
             "min_bookmarks": max(-1, int(self.config.get("min_bookmarks", -1) if self.config.get("min_bookmarks", -1) is not None else -1)),
             "min_views": max(-1, int(self.config.get("min_views", -1) if self.config.get("min_views", -1) is not None else -1)),
             "min_likes": max(-1, int(self.config.get("min_likes", -1) if self.config.get("min_likes", -1) is not None else -1)),

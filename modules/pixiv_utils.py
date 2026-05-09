@@ -12,11 +12,9 @@ def read_json(path: Path, default: Any):
     except Exception:
         return default
 
-
 def write_json(path: Path, data: Any):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
 
 def safe_filename(name: str, max_len: int = 80) -> str:
     name = html.unescape(str(name or ""))
@@ -24,14 +22,12 @@ def safe_filename(name: str, max_len: int = 80) -> str:
     name = name.strip(" ._") or "untitled"
     return name[:max_len]
 
-
 def getv(obj: Any, key: str, default=None):
     if obj is None:
         return default
     if isinstance(obj, dict):
         return obj.get(key, default)
     return getattr(obj, key, default)
-
 
 def to_int(value, default=0):
     try:
@@ -41,10 +37,8 @@ def to_int(value, default=0):
     except Exception:
         return default
 
-
 def split_terms(text: str):
     return [x.strip() for x in re.split(r"[,，]", text or "") if x.strip()]
-
 
 def parse_count_arg(text: str, default_count: int, max_count: int):
     text = (text or "").strip()
@@ -56,7 +50,6 @@ def parse_count_arg(text: str, default_count: int, max_count: int):
         count = max(1, min(int(m.group(1)), max_count))
         text = (text[:m.start()] + " " + text[m.end():]).strip()
     return text, count
-
 
 def full_command_args(event: AstrMessageEvent, command_name: str, injected: str = "") -> str:
     """优先从完整 message_str 提取命令后的全部参数，避免 AstrBot 参数注入只取首段。"""
@@ -70,7 +63,6 @@ def full_command_args(event: AstrMessageEvent, command_name: str, injected: str 
         return text[len(prefix):].strip()
     return (injected or "").strip()
 
-
 def tags_text(item) -> list[str]:
     tags = []
     for tag in getv(item, "tags", []) or []:
@@ -82,20 +74,16 @@ def tags_text(item) -> list[str]:
             tags.append(str(trans))
     return tags
 
-
 def searchable_text(item) -> str:
     parts = [getv(item, "title", ""), getv(item, "caption", ""), getv(item, "user", {}) and getv(getv(item, "user", {}), "name", "")]
     parts.extend(tags_text(item))
     return " ".join(str(x or "") for x in parts).lower()
 
-
 def is_r18(item) -> bool:
     return to_int(getv(item, "x_restrict", 0), 0) != 0
 
-
 def is_ai(item) -> bool:
     return to_int(getv(item, "illust_ai_type", getv(item, "ai_type", 0)), 0) == 2
-
 
 def stat_value(item, *keys):
     for k in keys:
@@ -104,10 +92,8 @@ def stat_value(item, *keys):
             return to_int(v, 0)
     return 0
 
-
 def item_id(item):
     return str(getv(item, "id", ""))
-
 
 def unique_items(items: Iterable[Any]):
     seen = set()
@@ -119,7 +105,6 @@ def unique_items(items: Iterable[Any]):
             out.append(item)
     return out
 
-
 def extract_items(resp, kind="illust"):
     if not resp:
         return []
@@ -129,7 +114,6 @@ def extract_items(resp, kind="illust"):
         if value:
             return list(value)
     return []
-
 
 def pick_image_url(item, quality: str):
     urls = []
@@ -158,22 +142,18 @@ def pick_image_url(item, quality: str):
                 break
     return result
 
-
 def novel_cover_url(item):
     image_urls = getv(item, "image_urls", {}) or {}
     if isinstance(image_urls, dict):
         return image_urls.get("large") or image_urls.get("medium") or image_urls.get("square_medium") or ""
     return ""
 
-
 def fmt_time(value):
     return str(value or "未知")
-
 
 def user_info(item):
     user = getv(item, "user", {}) or {}
     return str(getv(user, "name", "未知")), str(getv(user, "id", "未知"))
-
 
 def build_illust_info(item, page=None, page_total=None, quality="large", include_tags=True, max_tags=20, include_caption=True):
     author, author_id = user_info(item)
@@ -195,7 +175,6 @@ def build_illust_info(item, page=None, page_total=None, quality="large", include
         cap = re.sub(r"<[^>]+>", "", str(getv(item, "caption", "")))
         lines.append("简介：" + html.unescape(cap)[:500])
     return "\n".join(lines)
-
 
 def build_novel_info(item, include_tags=True, max_tags=20, include_caption=True):
     author, author_id = user_info(item)
