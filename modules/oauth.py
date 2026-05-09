@@ -4,8 +4,9 @@ import json
 import secrets
 import time
 import urllib.parse
-import urllib.request
 from pathlib import Path
+
+import aiohttp
 
 AUTH_TOKEN_URL = 'https://oauth.secure.pixiv.net/auth/token'
 LOGIN_URL = 'https://app-api.pixiv.net/web/v1/login'
@@ -56,7 +57,14 @@ def extract_code(text: str) -> str:
     return ''
 
 
-def exchange_token(callback_text: str, state_path: Path) -> dict:
+def parse_json_or_raw(raw: str) -> dict:
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {'raw': raw}
+
+
+async def exchange_token(callback_text: str, state_path: Path) -> dict:
     code = extract_code(callback_text)
     if not code:
         return {'error': 'code_not_found', 'hint': '请发送包含 code= 的 Pixiv 回调链接'}
@@ -64,9 +72,9 @@ def exchange_token(callback_text: str, state_path: Path) -> dict:
         state = json.loads(state_path.read_text(encoding='utf-8'))
         try:
             state_path.unlink()
-        except Exception:
+        except OSError:
             pass
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         return {'error': 'oauth_state_not_found', 'hint': '请先发送 /pixiv_get_token 生成登录链接'}
     code_verifier = state.get('code_verifier')
     if not code_verifier:
@@ -80,30 +88,19 @@ def exchange_token(callback_text: str, state_path: Path) -> dict:
         'include_policy': 'true',
         'redirect_uri': REDIRECT_URI,
     }
-    data = urllib.parse.urlencode(form).encode('utf-8')
-    req = urllib.request.Request(
-        AUTH_TOKEN_URL,
-        data=data,
-        headers={
-            'User-Agent': USER_AGENT,
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        method='POST',
-    )
+    headers = {
+        'User-Agent': USER_AGENT,
+        'Content-Type': 'application/x-www-form-urlencoded',
+    }
+    timeout = aiohttp.ClientTimeout(total=30)
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            raw = resp.read().decode('utf-8', 'replace')
-            try:
-                return json.loads(raw)
-            except Exception:
-                return {'raw': raw}
-    except urllib.error.HTTPError as e:
-        raw = e.read().decode('utf-8', 'replace')
-        try:
-            return json.loads(raw)
-        except Exception:
-            return {'raw': raw}
-    except Exception as e:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(AUTH_TOKEN_URL, data=form, headers=headers) as resp:
+                raw = await resp.text(encoding='utf-8', errors='replace')
+                return parse_json_or_raw(raw)
+    except aiohttp.ClientError as e:
+        return {'error': str(e)}
+    except TimeoutError as e:
         return {'error': str(e)}
 
 

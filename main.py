@@ -1731,7 +1731,7 @@ class PixivcCrawlerPlugin(Star):
         if "code=" not in text:
             return
         yield event.plain_result("正在处理 Pixiv OAuth 回调并获取 token。")
-        obj = await asyncio.to_thread(exchange_token, text, OAUTH_STATE_FILE)
+        obj = await exchange_token(text, OAUTH_STATE_FILE)
         raw = json.dumps(obj, ensure_ascii=False, indent=2)
         access_token, refresh_token = token_parts(obj)
         yield event.plain_result(raw)
