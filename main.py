@@ -58,102 +58,6 @@ class PixivcCrawlerPlugin(Star):
         self.social = SocialService(self)
         self.misc = MiscService(self)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     async def initialize(self):
         c = self.config_service.cfg()
         if c.get("encrypt_zip_enabled", False) and pyzipper is None:
@@ -172,7 +76,6 @@ class PixivcCrawlerPlugin(Star):
         if self._refresh_token_task and not self._refresh_token_task.done():
             self._refresh_token_task.cancel()
             logger.info("Pixivc Refresh Token 静默刷新任务已停止")
-
 
     @filter.command("pixivc_get_token", alias={"获取P站Token"})
     async def pixivc_get_token(self, event: AstrMessageEvent):
@@ -206,7 +109,6 @@ class PixivcCrawlerPlugin(Star):
     async def pixivc_help(self, event: AstrMessageEvent):
         yield event.plain_result(self.misc.build_help_text())
 
-
     @filter.command("pixivc_auto")
     async def pixivc_auto(self, event: AstrMessageEvent, args: str = ""):
         q = full_command_args(event, "pixivc_auto", args)
@@ -238,7 +140,6 @@ class PixivcCrawlerPlugin(Star):
             return
         async for r in self.illust.run_illust_job(event, f"illust_{q}", lambda: self.illust._collect_illust_detail(q)):
             yield r
-
 
     @filter.command("pixivc_bookmark_add")
     async def pixivc_bookmark_add(self, event: AstrMessageEvent, args: str = ""):
@@ -272,7 +173,6 @@ class PixivcCrawlerPlugin(Star):
         _, count, tag_terms = self.query.parse_query_count_tags(full_command_args(event, "pixivc_bookmarks", args))
         async for r in self.illust.run_illust_job(event, "my_bookmarks", lambda: self.illust._collect_my_bookmarks(count, tag_terms)):
             yield r
-
 
     @filter.command("pixivc_trending_tags")
     async def pixivc_trending_tags(self, event: AstrMessageEvent):
