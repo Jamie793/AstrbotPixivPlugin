@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 try:
     import pyzipper
@@ -9,34 +10,21 @@ from astrbot.api import logger
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 
-try:
-    from .modules.auth import AuthMixin
-    from .modules.cache import CacheMixin
-    from .modules.config import ConfigMixin
-    from .modules.downloader import DownloaderMixin
-    from .modules.illust import IllustMixin
-    from .modules.misc import MiscMixin
-    from .modules.novel import NovelMixin
-    from .modules.permissions import PermissionMixin
-    from .modules.query import QueryMixin
-    from .modules.sender import SenderMixin
-    from .modules.social import SocialMixin
-    from .modules.paths import TOKEN_STATE_FILE
-    from .modules.pixiv_utils import full_command_args, split_terms
-except ImportError:
-    from modules.auth import AuthMixin
-    from modules.cache import CacheMixin
-    from modules.config import ConfigMixin
-    from modules.downloader import DownloaderMixin
-    from modules.illust import IllustMixin
-    from modules.misc import MiscMixin
-    from modules.novel import NovelMixin
-    from modules.permissions import PermissionMixin
-    from modules.query import QueryMixin
-    from modules.sender import SenderMixin
-    from modules.social import SocialMixin
-    from modules.paths import TOKEN_STATE_FILE
-    from modules.pixiv_utils import full_command_args, split_terms
+from .modules.auth import AuthService
+from .modules.cache import CacheService
+from .modules.config import ConfigService
+from .modules.downloader import DownloaderService
+from .modules.illust import IllustService
+from .modules.misc import MiscService
+from .modules.novel import NovelService
+from .modules.permissions import PermissionService
+from .modules.query import QueryService
+from .modules.sender import SenderService
+from .modules.social import SocialService
+from .modules.errors import PixivRefreshTokenInvalidError
+from .modules.oauth import generate_login_url, exchange_token, token_parts
+from .modules.paths import OAUTH_STATE_FILE, TOKEN_STATE_FILE
+from .modules.pixiv_utils import full_command_args, split_terms
 
 @register(
     "astrbot_plugin_pixivs_crawler",
@@ -44,7 +32,7 @@ except ImportError:
     "一个面向 AstrBot 的 Pixiv App API 插件，支持 Pixiv 图片、漫画、小说搜索，作品详情，收藏，关注，热门标签，相关作品，自动补全，合并转发预览，以及按需下载 original 原图 ZIP",
     "1.3.0",
 )
-class PixivcCrawlerPlugin(ConfigMixin, AuthMixin, CacheMixin, QueryMixin, PermissionMixin, DownloaderMixin, SenderMixin, IllustMixin, NovelMixin, SocialMixin, MiscMixin, Star):
+class PixivcCrawlerPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
         super().__init__(context)
         self.config = config or {}
@@ -56,6 +44,30 @@ class PixivcCrawlerPlugin(ConfigMixin, AuthMixin, CacheMixin, QueryMixin, Permis
         self._last_debug = ""
         self._clean_task = None
         self._refresh_token_task = None
+        self.config_service = ConfigService(self)
+        self.auth = AuthService(self)
+        self.cache = CacheService(self)
+        self.query = QueryService(self)
+        self.permissions = PermissionService(self)
+        self.downloader = DownloaderService(self)
+        self.sender = SenderService(self)
+        self.illust = IllustService(self)
+        self.novel = NovelService(self)
+        self.social = SocialService(self)
+        self.misc = MiscService(self)
+
+    def __getattr__(self, name):
+        for service_name in (
+            "config_service", "auth", "cache", "query", "permissions",
+            "downloader", "sender", "illust", "novel", "social", "misc",
+        ):
+            service = self.__dict__.get(service_name)
+            if service is None:
+                continue
+            attr = getattr(type(service), name, None)
+            if attr is not None:
+                return getattr(service, name)
+        raise AttributeError(f"{type(self).__name__!s} object has no attribute {name!r}")
 
     async def initialize(self):
         c = self.cfg()
