@@ -39,9 +39,9 @@ except ImportError:
     from modules.pixiv_utils import full_command_args, split_terms
 
 @register(
-    "astrbot_plugin_pixivc_crawler",
-    "local",
-    "Pixiv 非 Scrapy 批量爬取插件：图片/小说/AND/OR/ZIP/转发，最大20",
+    "astrbot_plugin_pixivs_crawler",
+    "Jamie793",
+    "一个面向 AstrBot 的 Pixiv App API 插件，支持 Pixiv 图片、漫画、小说搜索，作品详情，收藏，关注，热门标签，相关作品，自动补全，合并转发预览，以及按需下载 original 原图 ZIP",
     "1.3.0",
 )
 class PixivcCrawlerPlugin(ConfigMixin, AuthMixin, CacheMixin, QueryMixin, PermissionMixin, DownloaderMixin, SenderMixin, IllustMixin, NovelMixin, SocialMixin, MiscMixin, Star):
