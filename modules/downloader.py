@@ -1,0 +1,288 @@
+import asyncio
+import base64
+import html
+import json
+import os
+import re
+import secrets
+import shutil
+import string
+import time
+import zipfile
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import aiohttp
+from astrbot.api import logger
+from astrbot.api.event import AstrMessageEvent
+from astrbot.api.message_components import At, File, Image, Node, Nodes, Plain
+from pixivpy3 import AppPixivAPI, ByPassSniApi
+
+try:
+    import pyzipper
+except Exception:
+    pyzipper = None
+
+try:
+    from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
+    from .errors import PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE, PixivRefreshTokenInvalidError
+    from .help import build_help_text as build_pixivc_help_text
+    from .oauth import generate_login_url, exchange_token, token_parts
+    from .pixiv_utils import (
+        build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
+        getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
+        read_json, safe_filename, searchable_text, split_terms, stat_value, tags_text,
+        to_int, unique_items, user_info, write_json,
+    )
+except ImportError:
+    from modules.paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE, OAUTH_STATE_FILE, OWNER_QQ, PLUGIN_DIR
+    from modules.errors import PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE, PixivRefreshTokenInvalidError
+    from modules.help import build_help_text as build_pixivc_help_text
+    from modules.oauth import generate_login_url, exchange_token, token_parts
+    from modules.pixiv_utils import (
+        build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
+        getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
+        read_json, safe_filename, searchable_text, split_terms, stat_value, tags_text,
+        to_int, unique_items, user_info, write_json,
+    )
+
+
+class DownloaderMixin:
+    def convert_image_proxy_url(self, url: str, proxy=None) -> str:
+        c = self.cfg()
+        if proxy or not c["use_image_proxy_without_proxy"]:
+            return url
+        host = c["image_proxy_host"].rstrip("/")
+        if not host:
+            return url
+        # i.pixiv.re 用法：把 https://i.pximg.net/... 替换为 https://i.pixiv.re/...
+        for src in ("https://i.pximg.net", "http://i.pximg.net"):
+            if str(url).startswith(src):
+                return host + str(url)[len(src):]
+        return url
+
+    async def download_url(self, session, url, path, proxy=None, timeout=60):
+        url = self.convert_image_proxy_url(url, proxy)
+        headers = {"Referer": "https://www.pixiv.net/", "User-Agent": "Mozilla/5.0"}
+        async with session.get(url, headers=headers, proxy=proxy or None, timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
+            if resp.status != 200:
+                raise RuntimeError(f"HTTP {resp.status}")
+            path.write_bytes(await resp.read())
+
+    def generate_zip_password(self, length=16) -> str:
+        lowers = string.ascii_lowercase
+        uppers = string.ascii_uppercase
+        digits = string.digits
+        symbols = "!@#$%^&*()-_=+[]{};,.?"
+        chars = [
+            secrets.choice(lowers),
+            secrets.choice(uppers),
+            secrets.choice(digits),
+            secrets.choice(symbols),
+        ]
+        pool = lowers + uppers + digits + symbols
+        chars.extend(secrets.choice(pool) for _ in range(max(0, length - len(chars))))
+        secrets.SystemRandom().shuffle(chars)
+        return "".join(chars)
+
+    def new_zip_writer(self, zip_path: Path):
+        if not self.cfg().get("encrypt_zip_enabled", bool(self.config.get("encrypt_zip_enabled", False))):
+            return zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED), ""
+        if pyzipper is None:
+            raise RuntimeError("已开启 ZIP 加密，但缺少依赖 pyzipper，请安装 requirements.txt 后重启插件。")
+        password = self.generate_zip_password()
+        zf = pyzipper.AESZipFile(zip_path, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES)
+        zf.setpassword(password.encode("utf-8"))
+        return zf, password
+
+    def remember_zip_password(self, password: str):
+        self._last_zip_password = password or ""
+
+    def pop_zip_password(self) -> str:
+        password = getattr(self, "_last_zip_password", "") or ""
+        self._last_zip_password = ""
+        return password
+
+    async def prepare_illust_files(self, items, label="pixivs", progress_cb=None, make_zip=True):
+        c = self.cfg()
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        base = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}"
+        img_dir = base / "images"
+        img_dir.mkdir(parents=True, exist_ok=True)
+        sem = asyncio.Semaphore(c["concurrent_downloads"])
+        session_timeout = aiohttp.ClientTimeout(total=c["request_timeout"] + 30)
+        saved = []
+        infos = []
+
+        async with aiohttp.ClientSession(timeout=session_timeout) as session:
+            async def one(item):
+                iid = item_id(item)
+                title = safe_filename(getv(item, "title", "untitled"), 50)
+                urls = pick_image_url(item, c["image_quality"])
+                total = len(urls)
+                out = []
+                for idx, url in enumerate(urls, 1):
+                    ext = Path(url.split("?")[0]).suffix or ".jpg"
+                    p = img_dir / f"{iid}_p{idx}_{title}{ext}"
+                    async with sem:
+                        try:
+                            await self.download_url(session, url, p, c["proxy"], c["request_timeout"])
+                            out.append((p, item, idx, total))
+                        except Exception as e:
+                            logger.warning(f"pixivc image download failed {iid} p{idx}: {e}")
+                return out
+
+            results = await asyncio.gather(*(one(x) for x in items), return_exceptions=True)
+            for res in results:
+                if isinstance(res, Exception):
+                    continue
+                for row in res:
+                    saved.append(row)
+
+        for p, item, idx, total in saved:
+            infos.append(build_illust_info(item, idx, total, c["image_quality"], c["include_tags"], c["max_tags_display"], c["include_caption"]))
+        info_path = base / "info.txt"
+        info_path.write_text("\n\n".join(infos), encoding="utf-8")
+        zip_path = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}.zip"
+        if not make_zip:
+            return base, zip_path, saved
+        zip_seen_ids = set()
+        zip_ids = []
+        for _, item, _, _ in saved:
+            iid = item_id(item)
+            if iid and iid not in zip_seen_ids:
+                zip_seen_ids.add(iid)
+                zip_ids.append(iid)
+        zip_total = max(1, len(zip_ids))
+        zip_done_ids = set()
+        zf, zip_password = self.new_zip_writer(zip_path)
+        self.remember_zip_password(zip_password)
+        with zf:
+            if c["include_info_txt"]:
+                zf.write(info_path, "info.txt")
+            for p, item, *_ in saved:
+                iid = item_id(item)
+                if progress_cb and iid and iid not in zip_done_ids:
+                    zip_done_ids.add(iid)
+                    await progress_cb(iid, len(zip_done_ids), zip_total)
+                zf.write(p, f"images/{p.name}")
+        return base, zip_path, saved
+
+    async def prepare_original_zip_from_items(self, items, label="pixivc_original", progress_cb=None):
+        old_quality = self.config.get("image_quality")
+        self.config["image_quality"] = "original"
+        try:
+            return await self.prepare_illust_files(items, label, progress_cb=progress_cb)
+        finally:
+            if old_quality is None:
+                self.config.pop("image_quality", None)
+            else:
+                self.config["image_quality"] = old_quality
+
+    async def prepare_novel_files(self, items, label="pixivc_novel", progress_cb=None):
+        c = self.cfg()
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        base = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}"
+        novel_dir = base / "novels"
+        cover_dir = base / "covers"
+        novel_dir.mkdir(parents=True, exist_ok=True)
+        cover_dir.mkdir(parents=True, exist_ok=True)
+        session_timeout = aiohttp.ClientTimeout(total=c["request_timeout"] + 30)
+        files = []
+        infos = []
+        async with aiohttp.ClientSession(timeout=session_timeout) as session:
+            for item in items:
+                nid = item_id(item)
+                title = safe_filename(getv(item, "title", "untitled"), 60)
+                info = build_novel_info(item, c["include_tags"], c["max_tags_display"], c["include_caption"])
+                infos.append(info)
+                text = await self.fetch_novel_text(nid)
+                txt_path = novel_dir / f"{nid}_{title}.txt"
+                txt_path.write_text(info + "\n\n" + (text or "小说正文获取失败或为空"), encoding="utf-8")
+                files.append((txt_path, item, text))
+                if c["include_novel_cover"]:
+                    url = novel_cover_url(item)
+                    if url:
+                        ext = Path(url.split("?")[0]).suffix or ".jpg"
+                        cover_path = cover_dir / f"{nid}_cover{ext}"
+                        try:
+                            await self.download_url(session, url, cover_path, c["proxy"], c["request_timeout"])
+                            files.append((cover_path, item, ""))
+                        except Exception:
+                            pass
+        info_path = base / "info.txt"
+        info_path.write_text("\n\n".join(infos), encoding="utf-8")
+        zip_path = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}.zip"
+        zip_seen_ids = set()
+        zip_ids = []
+        for _, item, _ in files:
+            nid = item_id(item)
+            if nid and nid not in zip_seen_ids:
+                zip_seen_ids.add(nid)
+                zip_ids.append(nid)
+        zip_total = max(1, len(zip_ids))
+        zip_done_ids = set()
+        zf, zip_password = self.new_zip_writer(zip_path)
+        self.remember_zip_password(zip_password)
+        with zf:
+            if c["include_info_txt"]:
+                zf.write(info_path, "info.txt")
+            for p, item, text in files:
+                nid = item_id(item)
+                if progress_cb and nid and nid not in zip_done_ids:
+                    zip_done_ids.add(nid)
+                    await progress_cb(nid, len(zip_done_ids), zip_total)
+                sub = "covers" if "cover" in p.name else "novels"
+                zf.write(p, f"{sub}/{p.name}")
+        return base, zip_path, files, infos
+
+    async def yield_pack_progress(self, event, items, kind="作品"):
+        ids = []
+        seen = set()
+        for item in items:
+            iid = item_id(item)
+            if not iid or iid in seen:
+                continue
+            seen.add(iid)
+            ids.append(iid)
+        total = max(1, len(ids))
+        for idx, iid in enumerate(ids, 1):
+            percent = int(idx * 100 / total)
+            yield event.plain_result(f"正在处理{kind}ID：{iid}（{idx}/{total}，{percent}%）")
+            await asyncio.sleep(0)
+
+    async def prepare_with_live_progress(self, event, items, kind, prepare_factory):
+        ids = []
+        id_set = set()
+        for item in items:
+            iid = item_id(item)
+            if iid and iid not in id_set:
+                id_set.add(iid)
+                ids.append(iid)
+        total = max(1, len(ids))
+        seen = set()
+        queue = asyncio.Queue()
+
+        async def progress_cb(iid, idx=None, total_count=None):
+            if not self.cfg().get("show_pack_progress", True):
+                return
+            iid = str(iid or "").strip()
+            if not iid or iid in seen:
+                return
+            seen.add(iid)
+            idx = int(idx or len(seen))
+            total_count = max(1, int(total_count or total))
+            percent = int(idx * 100 / total_count)
+            yield_kind = "作品" if kind in {"作品", "画作"} else kind
+            await queue.put(f"正在打包，{yield_kind}ID：{iid}，当前进度({idx}/{total_count}){percent}%。")
+
+        task = asyncio.create_task(prepare_factory(progress_cb))
+        while True:
+            if task.done() and queue.empty():
+                break
+            try:
+                msg = await asyncio.wait_for(queue.get(), timeout=0.2)
+                yield ("progress", event.plain_result(msg))
+            except asyncio.TimeoutError:
+                pass
+        yield ("result", await task)
