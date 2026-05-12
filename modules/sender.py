@@ -37,14 +37,14 @@ class SenderService(BaseService):
         platform = self.platform_id(event)
         return platform in {"telegram", "tg"} or "telegram" in platform
 
-    async def send_zip(self, event: AstrMessageEvent, zip_path: Path, suppress_ready: bool = False):
+    async def send_zip(self, event: AstrMessageEvent, zip_path: Path, suppress_ready: bool = False, password: str = ""):
         c = self.config_service.cfg()
         size = zip_path.stat().st_size
         size_text = self.cache.format_size(size)
         if size > c["max_zip_mb"] * 1024 * 1024:
             yield event.plain_result(f"ZIP 大小 {size_text}，超过限制 {c['max_zip_mb']}MB，已取消发送。")
             return
-        password = self.downloader.pop_zip_password()
+        password = password or self.downloader.pop_zip_password()
         if not suppress_ready:
             if password:
                 yield event.plain_result(f"ZIP 已生成：{zip_path.name}，大小 {size_text}，已加密。解压密码：【{password}】。正在发送文件……")

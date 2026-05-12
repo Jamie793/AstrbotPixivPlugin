@@ -139,7 +139,7 @@ class CacheService(BaseService):
             return {}
         return data
 
-    def save_last_zip(self, event: AstrMessageEvent, zip_path: Path, label: str, count: int, kind: str = "illust"):
+    def save_last_zip(self, event: AstrMessageEvent, zip_path: Path, label: str, count: int, kind: str = "illust", password: str = ""):
         data = {
             "kind": str(kind),
             "path": str(zip_path),
@@ -148,6 +148,7 @@ class CacheService(BaseService):
             "count": int(count),
             "time": time.strftime("%Y-%m-%d %H:%M:%S"),
             "sender_id": self.permissions.sender_id(event),
+            "password": str(password or ""),
         }
         try:
             gid = event.get_group_id()

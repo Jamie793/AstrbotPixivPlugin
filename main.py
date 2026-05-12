@@ -365,7 +365,7 @@ class PixivcCrawlerPlugin(Star):
         if data and (not item_data or data.get("kind", last_kind) == last_kind):
             path = Path(data["path"])
             yield event.plain_result(f"检测到本地已有缓存 ZIP：{path.name}，直接发送，不重新打包。")
-            async for r in self.sender.send_zip(event, path, suppress_ready=True):
+            async for r in self.sender.send_zip(event, path, suppress_ready=True, password=str(data.get("password") or "")):
                 yield r
             return
         if not item_data:
@@ -388,7 +388,7 @@ class PixivcCrawlerPlugin(Star):
                         else:
                             prep_result = payload
                     base, zip_path, files, infos = prep_result
-                    self.cache.save_last_zip(event, zip_path, label, len(items), kind="novel")
+                    self.cache.save_last_zip(event, zip_path, label, len(items), kind="novel", password=self.downloader.peek_zip_password())
                     async for r in self.sender.send_zip(event, zip_path):
                         yield r
                     shutil.rmtree(base, ignore_errors=True)
@@ -405,7 +405,7 @@ class PixivcCrawlerPlugin(Star):
                         yield event.plain_result("original 下载失败，请检查代理或 Pixiv 访问。")
                         return
                     work_count = len({item_id(item) for _, item, _, _ in saved})
-                    self.cache.save_last_zip(event, zip_path, label, work_count, kind="illust")
+                    self.cache.save_last_zip(event, zip_path, label, work_count, kind="illust", password=self.downloader.peek_zip_password())
                     async for r in self.sender.send_zip(event, zip_path):
                         yield r
                     shutil.rmtree(base, ignore_errors=True)

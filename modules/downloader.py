@@ -96,6 +96,9 @@ class DownloaderService(BaseService):
     def remember_zip_password(self, password: str):
         self._last_zip_password = password or ""
 
+    def peek_zip_password(self) -> str:
+        return getattr(self, "_last_zip_password", "") or ""
+
     def pop_zip_password(self) -> str:
         password = getattr(self, "_last_zip_password", "") or ""
         self._last_zip_password = ""
