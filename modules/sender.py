@@ -14,6 +14,29 @@ from .pixiv_utils import (
 )
 
 class SenderService(BaseService):
+    def platform_id(self, event) -> str:
+        for name in ("get_platform_id", "get_platform_name"):
+            try:
+                fn = getattr(event, name, None)
+                if callable(fn):
+                    value = str(fn() or "").strip().lower()
+                    if value:
+                        return value
+            except Exception:
+                pass
+        try:
+            meta = getattr(event, "platform_meta", None)
+            value = str(getattr(meta, "id", "") or getattr(meta, "name", "") or "").strip().lower()
+            if value:
+                return value
+        except Exception:
+            pass
+        return ""
+
+    def is_telegram(self, event) -> bool:
+        platform = self.platform_id(event)
+        return platform in {"telegram", "tg"} or "telegram" in platform
+
     async def send_zip(self, event: AstrMessageEvent, zip_path: Path, suppress_ready: bool = False):
         c = self.config_service.cfg()
         size = zip_path.stat().st_size
@@ -56,6 +79,25 @@ class SenderService(BaseService):
     async def send_forward(self, event, saved, novel_infos=None):
         c = self.config_service.cfg()
         batch_size = 20
+
+        # Telegram 没有 QQ/OneBot 的合并转发 Nodes，直接降级为普通消息。
+        if self.is_telegram(event):
+            if novel_infos is not None:
+                all_infos = list(novel_infos or [])
+                total = len(all_infos)
+                if not all_infos:
+                    return
+                for idx, info in enumerate(all_infos, 1):
+                    prefix = f"Pixivc 小说预览 {idx}/{total}\n" if total > 1 else "Pixivc 小说预览\n"
+                    text = prefix + str(info or "")
+                    # Telegram 单条文本有长度限制，保守截断，避免适配器发送失败。
+                    yield event.plain_result(text[:3500])
+                    await asyncio.sleep(0.2)
+                return
+            async for r in self.send_images(event, saved):
+                yield r
+            return
+
         if novel_infos is not None:
             all_infos = list(novel_infos or [])
             total = len(all_infos)
@@ -99,8 +141,15 @@ class SenderService(BaseService):
 
     async def dispatch_illust_result(self, event, base, zip_path, saved):
         c = self.config_service.cfg()
-        # 图片搜索默认只发送合并转发预览，不自动生成/发送 ZIP。
+        # 图片搜索默认只发送预览，不自动生成/发送 ZIP。Telegram 不支持 QQ 合并转发，直接普通图片发送。
         preview_saved = saved
+        if self.is_telegram(event):
+            self.debug.record_output("Telegram 平台：跳过合并转发，改用普通图片预览发送。")
+            async for r in self.send_images(event, preview_saved):
+                yield r
+            if c["clean_after_send"]:
+                shutil.rmtree(base, ignore_errors=True)
+            return
         try:
             sent_any = False
             async for r in self.send_forward(event, preview_saved):
