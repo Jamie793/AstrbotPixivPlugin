@@ -2,7 +2,6 @@ import re
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api.message_components import At
 from .base import BaseService
-from .paths import R18_WHITELIST_FILE
 from .pixiv_utils import (
     build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
     getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
@@ -22,7 +21,7 @@ class PermissionService(BaseService):
             return ""
 
     def load_r18_whitelist(self):
-        data = read_json(R18_WHITELIST_FILE, {"qq_list": []})
+        data = self.state.get_section("r18_whitelist", {"qq_list": []})
         raw = data.get("qq_list", []) if isinstance(data, dict) else []
         clean = []
         for x in raw:
@@ -37,7 +36,7 @@ class PermissionService(BaseService):
             q = str(x).strip()
             if re.fullmatch(r"\d{5,12}", q) and q not in clean:
                 clean.append(q)
-        write_json(R18_WHITELIST_FILE, {"qq_list": clean})
+        self.state.set_section("r18_whitelist", {"qq_list": clean})
         return clean
 
     def first_at_qq(self, event: AstrMessageEvent) -> str:

@@ -116,7 +116,7 @@ class DownloaderService(BaseService):
     async def prepare_illust_files(self, items, label="pixivs", progress_cb=None, make_zip=True):
         c = self.config_service.cfg()
         ts = time.strftime("%Y%m%d_%H%M%S")
-        base = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}"
+        base = c["cache_image_temp_dir"] / f"{safe_filename(label, 40)}_{ts}"
         img_dir = base / "images"
         img_dir.mkdir(parents=True, exist_ok=True)
         sem = asyncio.Semaphore(c["concurrent_downloads"])
@@ -159,7 +159,8 @@ class DownloaderService(BaseService):
             infos.append(build_illust_info(item, None, total, c["image_quality"], c["include_tags"], c["max_tags_display"], c["include_caption"]))
         info_path = base / "info.txt"
         info_path.write_text("\n\n".join(infos), encoding="utf-8")
-        zip_path = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}.zip"
+        c["cache_image_file_dir"].mkdir(parents=True, exist_ok=True)
+        zip_path = c["cache_image_file_dir"] / f"{safe_filename(label, 40)}_{ts}.zip"
         if not make_zip:
             return base, zip_path, saved
         zip_seen_ids = set()
@@ -198,7 +199,7 @@ class DownloaderService(BaseService):
     async def prepare_novel_files(self, items, label="pixivc_novel", progress_cb=None):
         c = self.config_service.cfg()
         ts = time.strftime("%Y%m%d_%H%M%S")
-        base = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}"
+        base = c["cache_novel_temp_dir"] / f"{safe_filename(label, 40)}_{ts}"
         novel_dir = base / "novels"
         cover_dir = base / "covers"
         novel_dir.mkdir(parents=True, exist_ok=True)
@@ -228,7 +229,8 @@ class DownloaderService(BaseService):
                             pass
         info_path = base / "info.txt"
         info_path.write_text("\n\n".join(infos), encoding="utf-8")
-        zip_path = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}.zip"
+        c["cache_novel_file_dir"].mkdir(parents=True, exist_ok=True)
+        zip_path = c["cache_novel_file_dir"] / f"{safe_filename(label, 40)}_{ts}.zip"
         zip_seen_ids = set()
         zip_ids = []
         for _, item, _ in files:

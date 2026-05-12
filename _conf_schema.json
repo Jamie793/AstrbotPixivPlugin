@@ -152,12 +152,6 @@
     "max": 300,
     "hint": "单个网络请求超时时间，单位秒。"
   },
-  "download_dir": {
-    "description": "下载缓存目录",
-    "type": "string",
-    "default": "data/downloads",
-    "hint": "图片、小说和 ZIP 的缓存目录。"
-  },
   "include_info_txt": {
     "description": "ZIP 内包含 info.txt",
     "type": "bool",

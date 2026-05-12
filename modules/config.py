@@ -1,7 +1,6 @@
 import os
-from pathlib import Path
 from .base import BaseService
-from .paths import DATA_DIR, PLUGIN_DIR
+from .paths import DEFAULT_DOWNLOAD_DIR, CACHE_IMAGE_DIR, CACHE_IMAGE_TEMP_DIR, CACHE_IMAGE_FILE_DIR, CACHE_NOVEL_DIR, CACHE_NOVEL_TEMP_DIR, CACHE_NOVEL_FILE_DIR
 
 class ConfigService(BaseService):
     def cfg(self):
@@ -9,11 +8,7 @@ class ConfigService(BaseService):
         quality = str(self.config.get("image_quality", "large") or "large").lower()
         if quality not in {"medium", "large", "original"}:
             quality = "large"
-        download_dir = str(self.config.get("download_dir", "data/downloads") or "data/downloads")
-        dl_path = Path(download_dir)
-        if not dl_path.is_absolute():
-            # 相对路径以插件目录为基准，也就是 metadata.yaml 所在目录。
-            dl_path = PLUGIN_DIR / dl_path
+        dl_path = DEFAULT_DOWNLOAD_DIR
         admin_permissions = self.config.get("admin_permissions") or {}
 
         def admin_perm(key: str, default: bool = True) -> bool:
@@ -50,6 +45,12 @@ class ConfigService(BaseService):
             "concurrent_downloads": max(1, min(int(self.config.get("concurrent_downloads", 3) or 3), 8)),
             "request_timeout": max(10, int(self.config.get("request_timeout", 60) or 60)),
             "download_dir": dl_path,
+            "cache_image_dir": CACHE_IMAGE_DIR,
+            "cache_image_temp_dir": CACHE_IMAGE_TEMP_DIR,
+            "cache_image_file_dir": CACHE_IMAGE_FILE_DIR,
+            "cache_novel_dir": CACHE_NOVEL_DIR,
+            "cache_novel_temp_dir": CACHE_NOVEL_TEMP_DIR,
+            "cache_novel_file_dir": CACHE_NOVEL_FILE_DIR,
             "include_info_txt": bool(self.config.get("include_info_txt", True)),
             "clean_after_send": bool(self.config.get("clean_after_send", False)),
             "auto_clean_enabled": bool(self.config.get("auto_clean_enabled", True)),

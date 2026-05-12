@@ -71,6 +71,10 @@ class BaseService:
         self.p._last_debug = value
 
     @property
+    def state(self):
+        return self.p.state
+
+    @property
     def config_service(self):
         return self.p.config_service
 

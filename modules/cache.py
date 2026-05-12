@@ -6,7 +6,7 @@ from pathlib import Path
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
 from .base import BaseService
-from .paths import DATA_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE
+from .paths import DATA_DIR, DEFAULT_DOWNLOAD_DIR
 from .pixiv_utils import (
     build_illust_info, build_novel_info, extract_items, fmt_time, full_command_args,
     getv, is_ai, is_r18, item_id, novel_cover_url, parse_count_arg, pick_image_url,
@@ -37,19 +37,15 @@ class CacheService(BaseService):
                 await asyncio.sleep(60)
 
     async def clean_download_cache(self, reason="manual"):
-        c = self.config_service.cfg()
-        d = c["download_dir"]
+        d = DEFAULT_DOWNLOAD_DIR
         if self._task_lock.locked():
             logger.info("Pixivc 清理跳过：当前有爬取任务正在执行")
             return False
         if d.exists():
             shutil.rmtree(d, ignore_errors=True)
         d.mkdir(parents=True, exist_ok=True)
-        try:
-            LAST_ZIP_FILE.unlink(missing_ok=True)
-        except Exception:
-            pass
-        logger.info(f"Pixivc 下载缓存已清理，reason={reason}")
+        self.state.clear_section("last_zip")
+        logger.info(f"Pixivc 整个 cache 目录已清理，reason={reason}")
         return True
 
     def format_size(self, size: int) -> str:
@@ -80,7 +76,10 @@ class CacheService(BaseService):
             return 0
 
     def configured_cache_dir_text(self) -> str:
-        return str(self.config.get("download_dir", "data/downloads") or "data/downloads").strip()
+        try:
+            return str(DEFAULT_DOWNLOAD_DIR.relative_to(DATA_DIR))
+        except Exception:
+            return str(DEFAULT_DOWNLOAD_DIR)
 
     def format_cache_list(self, limit=30):
         c = self.config_service.cfg()
@@ -112,30 +111,42 @@ class CacheService(BaseService):
         return "\n".join(lines)
 
     def save_last_items(self, event: AstrMessageEvent, items, label: str, kind: str = "illust"):
+        ids = []
+        for item in items or []:
+            iid = item_id(item)
+            if iid and iid not in ids:
+                ids.append(iid)
         data = {
             "kind": str(kind),
             "label": str(label),
             "time": time.strftime("%Y-%m-%d %H:%M:%S"),
             "sender_id": self.permissions.sender_id(event),
-            "items": [self.sender._plain_item(x) for x in items],
+            "ids": ids,
         }
         try:
             gid = event.get_group_id()
         except Exception:
             gid = ""
         data["group_id"] = str(gid or "")
-        write_json(LAST_ITEMS_FILE, data)
-        try:
-            LAST_ZIP_FILE.unlink(missing_ok=True)
-        except Exception:
-            pass
+        self.state.set_section("last_items", data)
+        self.state.clear_section("last_zip")
 
     def load_last_items(self):
-        data = read_json(LAST_ITEMS_FILE, {})
+        data = self.state.get_section("last_items", {})
         if not isinstance(data, dict):
             return {}
-        items = data.get("items") or []
-        if not isinstance(items, list) or not items:
+        ids = data.get("ids") or []
+        # 兼容旧 state：如果仍然是完整 items，就提取 id 后返回。
+        if not ids and isinstance(data.get("items"), list):
+            ids = []
+            for item in data.get("items") or []:
+                iid = item_id(item)
+                if iid and iid not in ids:
+                    ids.append(iid)
+            data = dict(data)
+            data.pop("items", None)
+            data["ids"] = ids
+        if not isinstance(ids, list) or not ids:
             return {}
         return data
 
@@ -155,10 +166,10 @@ class CacheService(BaseService):
         except Exception:
             gid = ""
         data["group_id"] = str(gid or "")
-        write_json(LAST_ZIP_FILE, data)
+        self.state.set_section("last_zip", data)
 
     def load_last_zip(self):
-        data = read_json(LAST_ZIP_FILE, {})
+        data = self.state.get_section("last_zip", {})
         if not isinstance(data, dict):
             return {}
         path = Path(str(data.get("path") or ""))

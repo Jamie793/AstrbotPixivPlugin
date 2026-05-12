@@ -1,12 +1,7 @@
 import asyncio
-import json
-import os
-import time
-import uuid
 from astrbot.api import logger
 from pixivpy3 import AppPixivAPI, ByPassSniApi
 from .base import BaseService
-from .paths import DATA_DIR, R18_WHITELIST_FILE, LAST_ZIP_FILE, LAST_ITEMS_FILE, TOKEN_STATE_FILE
 from .errors import PIXIV_REFRESH_TOKEN_REQUIRED_MESSAGE, PixivRefreshTokenInvalidError
 
 class AuthService(BaseService):
@@ -14,63 +9,32 @@ class AuthService(BaseService):
         """保存运行期 Pixiv token 状态。/pixivc_get_token 获取流程不会调用这里。"""
         api = api or self._api
         access_token = str(getattr(api, "access_token", "") or "").strip()
-        refresh_token = str(getattr(api, "refresh_token", "") or "").strip()
-        expires_in = getattr(api, "expires_in", None)
-        if not access_token and not refresh_token:
+        if not access_token:
             return
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
         payload = {
             "access_token": access_token,
-            "refresh_token": refresh_token,
-            "saved_at": int(time.time()),
         }
-        if expires_in is not None:
-            try:
-                payload["expires_in"] = int(expires_in)
-                payload["expires_at"] = int(time.time()) + int(expires_in)
-            except Exception:
-                pass
-        tmp = TOKEN_STATE_FILE.with_name(f"{TOKEN_STATE_FILE.name}.tmp.{uuid.uuid4().hex}")
-        try:
-            tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-            os.replace(tmp, TOKEN_STATE_FILE)
-        finally:
-            try:
-                tmp.unlink(missing_ok=True)
-            except Exception:
-                pass
-        try:
-            os.chmod(TOKEN_STATE_FILE, 0o600)
-        except Exception:
-            pass
-        logger.info("Pixivc token 状态已静默保存到本地文件。")
+        self.state.set_section("token_state", payload)
+        logger.info("Pixivc token 状态已静默保存到 state.json。")
 
     def load_token_state(self) -> dict:
         try:
-            if not TOKEN_STATE_FILE.exists():
-                return {}
-            data = json.loads(TOKEN_STATE_FILE.read_text(encoding="utf-8"))
+            data = self.state.get_section("token_state", {})
             return data if isinstance(data, dict) else {}
         except Exception as e:
             logger.warning(f"Pixivc 读取本地 token 状态失败：{type(e).__name__}: {e}")
             return {}
 
     def restore_token_state_to_api(self, api) -> bool:
-        """启动后把文件中的 access_token/refresh_token 恢复进 pixivpy3 实例。"""
+        """启动后把文件中的 access_token 恢复进 pixivpy3 实例；refresh_token 只读取插件配置。"""
         state = self.load_token_state()
         access_token = str(state.get("access_token") or "").strip()
-        refresh_token = str(state.get("refresh_token") or "").strip()
         if not access_token:
             return False
         api.access_token = access_token
-        if refresh_token:
-            api.refresh_token = refresh_token
-        expires_at = state.get("expires_at")
-        if expires_at is not None:
-            try:
-                api.expires_in = max(0, int(expires_at) - int(time.time()))
-            except Exception:
-                pass
+        config_refresh_token = str(self.config.get("refresh_token") or "").strip()
+        if config_refresh_token:
+            api.refresh_token = config_refresh_token
         logger.info("Pixivc 已从本地文件恢复 access token 状态。")
         return True
 
@@ -92,11 +56,7 @@ class AuthService(BaseService):
             logger.error(f"Pixivc 写回新的 Refresh Token 失败：{type(e).__name__}: {e}")
 
     def get_refresh_token(self) -> str:
-        config_token = str(self.config.get("refresh_token") or "").strip()
-        if config_token:
-            return config_token
-        state_token = str(self.load_token_state().get("refresh_token") or "").strip()
-        return state_token
+        return str(self.config.get("refresh_token") or "").strip()
 
     async def refresh_token_keepalive_loop(self):
         """插件开启状态下定时静默认证，避免 refresh_token 长期未使用。"""

@@ -24,9 +24,10 @@ from .modules.permissions import PermissionService
 from .modules.query import QueryService
 from .modules.sender import SenderService
 from .modules.social import SocialService
+from .modules.state import StateService
 from .modules.errors import PixivRefreshTokenInvalidError
 from .modules.oauth import generate_login_url, exchange_token, token_parts
-from .modules.paths import OAUTH_STATE_FILE, TOKEN_STATE_FILE, DATA_DIR, PLUGIN_DIR
+from .modules.paths import OAUTH_STATE_FILE, DATA_DIR, PLUGIN_DIR
 from .modules.pixiv_utils import full_command_args, getv, item_id, split_terms
 
 @register(
@@ -55,6 +56,7 @@ class PixivcCrawlerPlugin(Star):
         self._clean_task = None
         self._refresh_token_task = None
         self.config_service = ConfigService(self)
+        self.state = StateService(self)
         self.auth = AuthService(self)
         self.cache = CacheService(self)
         self.query = QueryService(self)
@@ -324,13 +326,31 @@ class PixivcCrawlerPlugin(Star):
     async def pixivc_debug_last(self, event: AstrMessageEvent):
         yield event.plain_result(self._last_debug or "暂无调试信息。")
 
+    async def restore_items_from_ids(self, ids, kind: str):
+        items = []
+        seen = set()
+        for raw_id in ids or []:
+            sid = str(raw_id or "").strip()
+            if not sid or sid in seen or not sid.isdigit():
+                continue
+            seen.add(sid)
+            if kind == "novel":
+                resp = await self.auth.api_call("novel_detail", int(sid))
+                item = getv(resp, "novel", None)
+            else:
+                resp = await self.auth.api_call("illust_detail", int(sid))
+                item = self.illust.extract_first_illust(resp)
+            if item and self.permissions.pass_filter(item, kind):
+                items.append(item)
+        return items
+
     @filter.command("pixivc_status", desc="查看 Pixivc 配置、认证和缓存状态摘要。")
     async def pixivc_status(self, event: AstrMessageEvent):
         c = self.config_service.cfg()
         yield event.plain_result(
             "Pixivc 状态：\n"
             f"refresh_token：{'已设置' if c['refresh_token'] else '未设置'}\n"
-            f"access_token_cache：{'已保存' if TOKEN_STATE_FILE.exists() else '未保存'}\n"
+            f"access_token_cache：{'已保存' if self.state.token_state_exists() else '未保存'}\n"
             f"refresh_token_interval_hours：{c['refresh_token_interval_hours']}\n"
             f"proxy：{c['proxy'] or '未设置'}\n"
             f"use_image_proxy_without_proxy：{c['use_image_proxy_without_proxy']}\n"
@@ -371,7 +391,7 @@ class PixivcCrawlerPlugin(Star):
         if not item_data:
             yield event.plain_result("没有可打包的 Pixivc 结果，请先执行一次图片或小说搜索。")
             return
-        items = item_data.get("items") or []
+        ids = item_data.get("ids") or []
         label = item_data.get("label") or "last"
         kind = item_data.get("kind") or "illust"
         if self._task_lock.locked():
@@ -380,7 +400,11 @@ class PixivcCrawlerPlugin(Star):
         async with self._task_lock:
             try:
                 if kind == "novel":
-                    yield event.plain_result("正在打包小说 ZIP，请稍等。")
+                    yield event.plain_result("正在根据上次结果 ID 拉取小说详情并打包 ZIP，请稍等。")
+                    items = await self.restore_items_from_ids(ids, "novel")
+                    if not items:
+                        yield event.plain_result("上次结果 ID 已失效或详情拉取失败，请重新执行一次小说搜索。")
+                        return
                     prep_result = None
                     async for typ, payload in self.downloader.prepare_with_live_progress(event, items, "小说", lambda cb: self.downloader.prepare_novel_files(items, "pixivc_novel_" + str(label), progress_cb=cb)):
                         if typ == "progress":
@@ -393,7 +417,11 @@ class PixivcCrawlerPlugin(Star):
                         yield r
                     shutil.rmtree(base, ignore_errors=True)
                 else:
-                    yield event.plain_result("正在下载 original 并打包图片 ZIP，请稍等。")
+                    yield event.plain_result("正在根据上次结果 ID 拉取作品详情、下载 original 并打包图片 ZIP，请稍等。")
+                    items = await self.restore_items_from_ids(ids, "illust")
+                    if not items:
+                        yield event.plain_result("上次结果 ID 已失效或详情拉取失败，请重新执行一次图片搜索。")
+                        return
                     prep_result = None
                     async for typ, payload in self.downloader.prepare_with_live_progress(event, items, "作品", lambda cb: self.downloader.prepare_original_zip_from_items(items, "pixivc_original_" + str(label), progress_cb=cb)):
                         if typ == "progress":
