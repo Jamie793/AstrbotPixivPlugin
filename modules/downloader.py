@@ -44,20 +44,43 @@ class DownloaderService(BaseService):
                     if chunk:
                         f.write(chunk)
 
-    def generate_zip_password(self, length=16) -> str:
+    def generate_zip_password(self, length=256) -> str:
+        """生成 ZIP 加密密码。
+
+        默认长度 256。字符类型包含小写字母、大写字母、数字和特殊符号。
+        四类字符占比以 25% 为均值做正态分布随机波动，避免每次比例完全固定。
+        """
+        length = max(4, int(length or 256))
         lowers = string.ascii_lowercase
         uppers = string.ascii_uppercase
         digits = string.digits
         symbols = "!@#$%^&*()-_=+[]{};,.?"
-        chars = [
-            secrets.choice(lowers),
-            secrets.choice(uppers),
-            secrets.choice(digits),
-            secrets.choice(symbols),
+        groups = [lowers, uppers, digits, symbols]
+
+        rng = secrets.SystemRandom()
+        mean = length / len(groups)
+        sigma = max(1.0, length * 0.06)
+        min_count = 1
+        max_count = max(min_count, int(length * 0.45))
+
+        counts = [
+            max(min_count, min(max_count, int(round(rng.gauss(mean, sigma)))))
+            for _ in groups
         ]
-        pool = lowers + uppers + digits + symbols
-        chars.extend(secrets.choice(pool) for _ in range(max(0, length - len(chars))))
-        secrets.SystemRandom().shuffle(chars)
+
+        # 调整总数到 length，同时尽量保留正态分布生成的波动。
+        while sum(counts) < length:
+            counts[rng.randrange(len(counts))] += 1
+        while sum(counts) > length:
+            candidates = [i for i, c in enumerate(counts) if c > min_count]
+            if not candidates:
+                break
+            counts[rng.choice(candidates)] -= 1
+
+        chars = []
+        for pool, count in zip(groups, counts):
+            chars.extend(rng.choice(pool) for _ in range(count))
+        rng.shuffle(chars)
         return "".join(chars)
 
     def new_zip_writer(self, zip_path: Path):
