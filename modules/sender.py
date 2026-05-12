@@ -37,11 +37,44 @@ class SenderService(BaseService):
         platform = self.platform_id(event)
         return platform in {"telegram", "tg"} or "telegram" in platform
 
+    def split_file(self, file_path: Path, part_size: int):
+        parts = []
+        for old_part in file_path.parent.glob(file_path.name + ".part*"):
+            try:
+                old_part.unlink()
+            except Exception:
+                pass
+        with file_path.open("rb") as src:
+            idx = 1
+            while True:
+                chunk = src.read(part_size)
+                if not chunk:
+                    break
+                part_path = file_path.with_name(f"{file_path.name}.part{idx:03d}")
+                part_path.write_bytes(chunk)
+                parts.append(part_path)
+                idx += 1
+        return parts
+
+    async def send_file_result(self, event: AstrMessageEvent, file_path: Path, label: str = "文件"):
+        try:
+            # 优先使用本地文件路径发送，部分适配器对 base64 文件消息支持不稳定。
+            return True, event.chain_result([File(name=file_path.name, file=str(file_path))])
+        except Exception as e1:
+            logger.warning(f"pixivc {label} send by path failed: {e1}", exc_info=True)
+            try:
+                data = base64.b64encode(file_path.read_bytes()).decode()
+                return True, event.chain_result([File(name=file_path.name, file="base64://" + data)])
+            except Exception as e2:
+                return False, event.plain_result(f"{label} 发送失败：本地路径发送失败：{e1}；base64 发送失败：{e2}")
+
     async def send_zip(self, event: AstrMessageEvent, zip_path: Path, suppress_ready: bool = False, password: str = ""):
         c = self.config_service.cfg()
         size = zip_path.stat().st_size
         size_text = self.cache.format_size(size)
-        if size > c["max_zip_mb"] * 1024 * 1024:
+        telegram = self.is_telegram(event)
+        tg_part_size = 45 * 1024 * 1024
+        if not telegram and size > c["max_zip_mb"] * 1024 * 1024:
             yield event.plain_result(f"ZIP 大小 {size_text}，超过限制 {c['max_zip_mb']}MB，已取消发送。")
             return
         password = password or self.downloader.pop_zip_password()
@@ -52,20 +85,25 @@ class SenderService(BaseService):
                 yield event.plain_result(f"ZIP 已生成：{zip_path.name}，大小 {size_text}，正在发送文件……")
         elif password:
             yield event.plain_result(f"缓存 ZIP 已加密。解压密码：【{password}】")
-        try:
-            # 优先使用本地文件路径发送，部分适配器对 base64 文件消息支持不稳定。
-            yield event.chain_result([File(name=zip_path.name, file=str(zip_path))])
-            yield event.plain_result("ZIP 文件发送请求已提交。若聊天窗口未显示文件，请检查当前适配器是否支持本地路径文件消息。")
+
+        if telegram and size > tg_part_size:
+            parts = await asyncio.to_thread(self.split_file, zip_path, tg_part_size)
+            total = len(parts)
+            yield event.plain_result(f"检测到 Telegram 平台且 ZIP 大小超过 45MB，已自动分片为 {total} 个文件，每片最大 45MB。请下载全部分片后按顺序合并。")
+            for idx, part_path in enumerate(parts, 1):
+                yield event.plain_result(f"正在发送分片 {idx}/{total}：{part_path.name}，大小 {self.cache.format_size(part_path.stat().st_size)}")
+                ok, result = await self.send_file_result(event, part_path, label=f"ZIP 分片 {idx}/{total}")
+                yield result
+                if not ok:
+                    return
+                await asyncio.sleep(0.2)
+            yield event.plain_result("ZIP 分片发送请求已全部提交。合并示例：cat 文件名.zip.part* > 文件名.zip")
             return
-        except Exception as e1:
-            logger.warning(f"pixivc zip send by path failed: {e1}", exc_info=True)
-            try:
-                data = base64.b64encode(zip_path.read_bytes()).decode()
-                yield event.chain_result([File(name=zip_path.name, file="base64://" + data)])
-                yield event.plain_result("ZIP 文件发送请求已提交（base64 兜底）。若聊天窗口未显示文件，请检查当前适配器文件消息支持。")
-                return
-            except Exception as e2:
-                yield event.plain_result(f"ZIP 文件发送失败：本地路径发送失败：{e1}；base64 发送失败：{e2}")
+
+        ok, result = await self.send_file_result(event, zip_path, label="ZIP 文件")
+        yield result
+        if ok:
+            yield event.plain_result("ZIP 文件发送请求已提交。若聊天窗口未显示文件，请检查当前适配器是否支持本地路径文件消息。")
 
     async def send_images(self, event, saved):
         c = self.config_service.cfg()
