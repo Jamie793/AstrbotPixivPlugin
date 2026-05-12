@@ -56,6 +56,7 @@ class ConfigService(BaseService):
             "auto_clean_hour": max(0, min(int(self.config.get("auto_clean_hour", 4) if self.config.get("auto_clean_hour", 4) is not None else 4), 23)),
             "auto_clean_minute": max(0, min(int(self.config.get("auto_clean_minute", 0) if self.config.get("auto_clean_minute", 0) is not None else 0), 59)),
             "max_zip_mb": max(1, int(self.config.get("max_zip_mb", 200) or 200)),
+            "zip_password_length": max(8, min(int(self.config.get("zip_password_length", 64) or 64), 64)),
             "send_mode": str(self.config.get("send_mode", "zip") or "zip"),
             "forward_mode": str(self.config.get("forward_mode", "info_and_images") or "info_and_images"),
             "forward_threshold": max(1, min(int(self.config.get("forward_threshold", 5) or 5), 20)),

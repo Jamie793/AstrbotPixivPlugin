@@ -72,6 +72,14 @@
     "default": false,
     "hint": "开启后 ZIP 使用随机密码加密。"
   },
+  "zip_password_length": {
+    "description": "ZIP 解压密码长度",
+    "type": "int",
+    "default": 64,
+    "min": 8,
+    "max": 64,
+    "hint": "开启 ZIP 加密后使用的随机密码长度，范围 8-64。"
+  },
   "show_pack_progress": {
     "description": "显示打包进度日志",
     "type": "bool",

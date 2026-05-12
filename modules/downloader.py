@@ -44,13 +44,13 @@ class DownloaderService(BaseService):
                     if chunk:
                         f.write(chunk)
 
-    def generate_zip_password(self, length=256) -> str:
+    def generate_zip_password(self, length=64) -> str:
         """生成 ZIP 加密密码。
 
-        默认长度 256。字符类型包含小写字母、大写字母、数字和特殊符号。
+        默认长度 64。字符类型包含小写字母、大写字母、数字和特殊符号。
         四类字符占比以 25% 为均值做正态分布随机波动，避免每次比例完全固定。
         """
-        length = max(4, int(length or 256))
+        length = max(8, min(int(length or 64), 64))
         lowers = string.ascii_lowercase
         uppers = string.ascii_uppercase
         digits = string.digits
@@ -88,7 +88,7 @@ class DownloaderService(BaseService):
             return zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED), ""
         if pyzipper is None:
             raise RuntimeError("已开启 ZIP 加密，但缺少依赖 pyzipper，请安装 requirements.txt 后重启插件。")
-        password = self.generate_zip_password()
+        password = self.generate_zip_password(self.config_service.cfg().get("zip_password_length", 64))
         zf = pyzipper.AESZipFile(zip_path, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES)
         zf.setpassword(password.encode("utf-8"))
         return zf, password
@@ -149,8 +149,14 @@ class DownloaderService(BaseService):
                 for row in res:
                     saved.append(row)
 
-        for p, item, idx, total in saved:
-            infos.append(build_illust_info(item, idx, total, c["image_quality"], c["include_tags"], c["max_tags_display"], c["include_caption"]))
+        info_seen_ids = set()
+        for _, item, _, total in saved:
+            iid = item_id(item)
+            info_key = iid or id(item)
+            if info_key in info_seen_ids:
+                continue
+            info_seen_ids.add(info_key)
+            infos.append(build_illust_info(item, None, total, c["image_quality"], c["include_tags"], c["max_tags_display"], c["include_caption"]))
         info_path = base / "info.txt"
         info_path.write_text("\n\n".join(infos), encoding="utf-8")
         zip_path = c["download_dir"] / f"{safe_filename(label, 40)}_{ts}.zip"
