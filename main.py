@@ -517,11 +517,13 @@ class PixivcCrawlerPlugin(Star):
         if not q:
             yield event.plain_result("参数格式：/pixivc_tag 标签 [n数量] [p页码] [m深度]")
             return
-        denied = self.permissions.require_r18_query_allowed(event, q)
+        terms = split_terms(q)
+        denied = self.permissions.require_r18_query_allowed(event, terms or q)
         if denied:
             yield event.plain_result(denied)
             return
-        async for r in self.illust.run_illust_job(event, f"tag_{q}", lambda: self.illust.collect_and_or([q], count, "illust", "tag", "single")):
+        logic = "and" if len(terms) > 1 else "single"
+        async for r in self.illust.run_illust_job(event, f"tag_{q}", lambda: self.illust.collect_and_or(terms or [q], count, "illust", "tag", logic)):
             yield r
 
     @filter.command("pixivc_key_and", desc="多关键词 AND 搜索 Pixiv 插画/漫画。")
@@ -641,7 +643,9 @@ class PixivcCrawlerPlugin(Star):
         if not q:
             yield event.plain_result("参数格式：/pixivc_novel_tag 标签 [n数量] [p页码] [m深度] [t标签,-排除标签]")
             return
-        async for r in self.novel.run_novel_job(event, f"tag_{q}", lambda: self.illust.collect_and_or([q], count, "novel", "tag", "single", tag_terms)):
+        terms = split_terms(q)
+        logic = "and" if len(terms) > 1 else "single"
+        async for r in self.novel.run_novel_job(event, f"tag_{q}", lambda: self.illust.collect_and_or(terms or [q], count, "novel", "tag", logic, tag_terms)):
             yield r
 
     @filter.command("pixivc_novel_key_and", desc="多关键词 AND 搜索 Pixiv 小说。")

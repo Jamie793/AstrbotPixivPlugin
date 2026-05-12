@@ -22,12 +22,12 @@ class IllustService(BaseService):
                 if next_qs:
                     resp = await self.auth.api_call("search_illust", **next_qs)
                 else:
-                    resp = await self.auth.api_call("search_illust", query, search_target=target, sort="date_desc")
+                    resp = await self.auth.api_call("search_illust", query, search_target=target, sort="popular_desc")
             else:
                 if next_qs:
                     resp = await self.auth.api_call("search_novel", **next_qs)
                 else:
-                    resp = await self.auth.api_call("search_novel", query, search_target=target, sort="date_desc")
+                    resp = await self.auth.api_call("search_novel", query, search_target=target, sort="popular_desc")
             current_page = page + 1
             if current_page >= start_page:
                 raw_batch = extract_items(resp, kind)
@@ -75,8 +75,12 @@ class IllustService(BaseService):
             items = unique_items(all_items)
             # tag_or 是 OR：每一路搜索已按对应单标签精确过滤，这里只去重截断。
             return items[:count]
-        query = terms[0] if terms else ""
         exact_tags = self.query.merge_tag_filters(terms, tag_terms) if mode == "tag" else tag_terms
+        if mode == "tag":
+            # 多标签时用空格拼成关键词交给 Pixiv 搜索，例如：标签1,标签2 -> "标签1 标签2"，再本地精确筛 tag。
+            query = " ".join([str(x).strip() for x in terms if str(x).strip()])
+        else:
+            query = terms[0] if terms else ""
         fetch_count = count * 3 if mode == "tag" else (count * 2 if logic == "and" else count)
         items = await self.collect_page_search(api, query, fetch_count, kind, target, exact_tags)
         # tag / tag_and 搜索必须最终再按作品 tags 做单标签精确过滤，避免 Pixiv 返回近似标签。
